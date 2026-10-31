@@ -1,0 +1,47 @@
+{
+  "version": "gate0-criteria-frozen-20261101-esc9",
+  "provenance": {
+    "derived_from": [
+      "quick v6 (20261101_043917)",
+      "full v3 (20261101_053622)",
+      "full v4 (20261101_055921)"
+    ],
+    "council": "esc#9 (AG-2 criteria + CX-1 physics + ZC-2 freeze protocol + ZC-3 hard-stop)",
+    "physics_model": "CX-1: SATD weight 2^(-(AQ+offset)/6); checkerboard iid ratio ~1.25 -> base QP shift ~0.77 -> predicted +6.77/-5.23 (observed +7/-5)"
+  },
+  "uniform_maps": {
+    "plus6": {
+      "sign_1_compensated": [
+        2.5,
+        4.5
+      ],
+      "fidelity": 1.0
+    },
+    "minus6": {
+      "sign_-1_compensated": [
+        3.5,
+        6.0
+      ],
+      "fidelity": 1.0
+    }
+  },
+  "checkerboard": {
+    "sign_1_compensated": [
+      5.0,
+      8.5
+    ],
+    "sign_-1_compensated": [
+      3.5,
+      6.5
+    ],
+    "frame_0_uncompensated": [
+      5.0,
+      7.0
+    ],
+    "fidelity": 0.98,
+    "separation_floor_asymmetry": 0.5
+  },
+  "aggregate_median_floor": 3.0,
+  "hard_lockout": "No criterion edits without CX-1 deep telemetry (per-POC base QP pre-AQ, weighted SATD, post-clipping QP). Confirmatory run result is FINAL: fail = structural GATE 0 FAIL escalated to project owner.",
+  "sign_fidelity_note": "uniform maps 100% hard; checkerboard >=0.98 per esc#8/9"
+}

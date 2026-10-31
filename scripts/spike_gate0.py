@@ -176,10 +176,13 @@ def run_spike(output: Path, library: CodecBuild | X265Library, ffmpeg: str,
                         raise ValueError("Zero-map changed the same-binary bitstream")
                 # AG-2 esc#8 (synthesized with CX-1): direction-asymmetric
                 # provisional gross-guard bands; checkerboard dual-sign rules.
+                # FROZEN criteria per council esc#9 (20261101_064330): pre-registered
+                # from accumulated data; HARD LOCKOUT - no edits without CX-1 deep
+                # telemetry. Next run is CONFIRMATORY; fail = structural result.
                 band_profiles = {
                     "plus6": ({1: (2.5, 4.5)}, 1.0, None),
                     "minus6": ({-1: (3.5, 6.0)}, 1.0, None),
-                    "checkerboard": ({1: (2.5, 6.0), -1: (3.5, 6.0)}, 0.98, 7.0),
+                    "checkerboard": ({1: (5.0, 8.5), -1: (3.5, 6.5)}, 0.98, 0.5),
                 }
                 for name in (("plus6",) if quick else ("plus6", "minus6", "checkerboard")):
                     bands, min_fid, min_sep = band_profiles[name]
