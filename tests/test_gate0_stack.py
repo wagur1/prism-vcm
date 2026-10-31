@@ -56,8 +56,12 @@ class Gate0ControllerTests(unittest.TestCase):
                 raise RuntimeError("test encode error")
             prefix.with_suffix(".hevc").write_bytes(b"different" if identity_error and name == "stock" else b"test")
             prefix.with_suffix(".csv").write_text("Bits\n" + "8\n" * 10)
-        with patch.object(self.spike, "offset_maps", return_value={name: None for name in (
-                "zero", "plus6", "minus6", "checkerboard")}), \
+        import numpy as _np
+        with patch.object(self.spike, "offset_maps", return_value={
+                "zero": _np.zeros((2, 3), dtype=_np.float32),
+                "plus6": _np.full((2, 3), 6.0, dtype=_np.float32),
+                "minus6": _np.full((2, 3), -6.0, dtype=_np.float32),
+                "checkerboard": _np.array([[6.0, -6.0], [-6.0, 6.0]], dtype=_np.float32)}), \
                 patch.object(self.spike, "encode_condition", side_effect=encode) as encodes, \
                 patch.object(self.spike, "residual_trace", side_effect=lambda *a, **k: dense_trace()), \
                 patch.object(self.spike, "verify_spatial_effect", return_value={"1": 6}), \

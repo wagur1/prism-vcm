@@ -112,6 +112,11 @@ def run_spike(output: Path, library: CodecBuild | X265Library, ffmpeg: str,
         raise X265Unavailable("Full GATE 0 requires a separately pinned stock build")
     output.mkdir(parents=True, exist_ok=True)
     maps = offset_maps(width, height)
+    # ZC-3 (esc#5): producer-side guard - a silently-drifted zero map would fake
+    # a no-effect result; drift here means the harness is broken, fail loudly.
+    assert maps["zero"].max() == 0.0 and maps["zero"].min() == 0.0, "zero map drifted"
+    assert maps["plus6"].min() == maps["plus6"].max() == 6.0, "plus6 map drifted"
+    assert sorted({float(v) for v in maps["checkerboard"].flatten()}) == [-6.0, 6.0], "checkerboard drifted"
     report: dict = {"status": "RUNNING", "instrument": "x265_prism_residual_v1",
                     "mode": "quick" if quick else "full", "gate0_complete": False,
                     "frames_per_encode": 10, "encode_attempts": 0,
@@ -121,7 +126,11 @@ def run_spike(output: Path, library: CodecBuild | X265Library, ffmpeg: str,
     try:
         for qp in ((32,) if quick else (27, 32, 37, 42, 47)):
             for gop in ((10,) if quick else (1, 10)):
-                cfg = EncoderConfig(qp=qp, gop=gop, bframes=0 if gop == 1 else 3)
+                rc_mode = os.environ.get("GATE0_RC", "CQP")
+                crf = float(os.environ.get("GATE0_CRF", "20"))
+                cfg = EncoderConfig(qp=qp, crf=crf, rc_mode=rc_mode,
+                                    gop=gop, bframes=0 if gop == 1 else 3)
+                report.setdefault("rc_modes", []).append(rc_mode)
                 traces, streams = {}, {}
                 conditions = ("zero", "plus6") if quick else (
                     "stock", "same_binary_no_map", "zero", "plus6", "minus6", "checkerboard")
