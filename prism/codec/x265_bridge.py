@@ -119,11 +119,20 @@ class X265Library:
             ct.POINTER(ct.POINTER(ct.c_uint8)), ct.POINTER(ct.c_size_t),
             ct.POINTER(ct.c_int64)]
         self.api.prism_encode.restype = ct.c_int
+        # Council escalation #3 (20261101_032249): the caller-supplied pin is the
+        # source of truth for declared provenance (enable_assembly); runtime-measured
+        # identity fields (hashes/version/abi/size) stay computed.
         self.pin = BuildPin(file_sha256(library), file_sha256(shim),
                            self.api.prism_version().decode(), self.api.prism_abi(),
-                           self.api.prism_picture_size())
+                           self.api.prism_picture_size(),
+                           enable_assembly=(
+                               pin.enable_assembly if pin is not None
+                               else os.environ.get("PRISM_GATE0_ASSEMBLY", "ON") == "ON"
+                           ))
         if pin is not None and pin != self.pin:
-            raise ValueError(f"x265 build pin mismatch: {asdict(self.pin)}")
+            diffs = {f: {"declared": getattr(pin, f), "runtime": getattr(self.pin, f)}
+                     for f in pin.__dataclass_fields__ if getattr(pin, f) != getattr(self.pin, f)}
+            raise ValueError(f"x265 build pin mismatch (declared!=runtime): {diffs}")
 
 
 class X265Encoder:
