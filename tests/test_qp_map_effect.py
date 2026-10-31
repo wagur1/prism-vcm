@@ -19,7 +19,7 @@ def test_average_qp_cannot_substitute_spatial_evidence():
 
 
 def test_v14_bands_and_aggregate():
-    # I-frame band: median 6.0 passes, 3.0 fails.
+    # Frame 0 = uncompensated state: median 6.0 passes, 3.0 fails band.
     i_anchor = {(0, 0, 0): 32.}
     i_changed = {(0, 0, 0): 38.}
     verify_spatial_effect(i_anchor, i_changed, np.array([[6.]]),
@@ -27,7 +27,8 @@ def test_v14_bands_and_aggregate():
     with pytest.raises(ValueError, match="outside"):
         verify_spatial_effect(i_anchor, {(0, 0, 0): 35.}, np.array([[6.]]),
                               min_pairs=1, min_qg=1)
-    # P-frame band: median 3.0 passes at frame 1; 2.6 passes band but fails aggregate.
+    # Frames >= 1 = compensated state: median 3.0 passes at frame 1; 2.6 passes
+    # band but fails aggregate (< 3.00).
     p_anchor = {(1, 0, 0): 32., (2, 0, 0): 32.}
     p_changed = {(1, 0, 0): 35., (2, 0, 0): 35.}
     verify_spatial_effect(p_anchor, p_changed, np.array([[6.]]),
@@ -36,9 +37,10 @@ def test_v14_bands_and_aggregate():
     with pytest.raises(ValueError, match="too weak"):
         verify_spatial_effect(p_anchor, weak, np.array([[6.]]),
                               min_pairs=1, min_qg=1)
-    # I-frame treated per i_frames override: frame 1 as intra.
-    verify_spatial_effect(p_anchor, p_changed, np.array([[6.]]),
-                          min_pairs=1, min_qg=1, i_frames={1, 2})
+    # Compensated band also applies to later intra frames (gop=1 evidence, AG-2 esc#7).
+    later_intra = {(3, 0, 0): 35.}
+    verify_spatial_effect({(3, 0, 0): 32.}, later_intra, np.array([[6.]]),
+                          min_pairs=1, min_qg=1)
 
 
 def test_min_count_guard_fails_loudly():

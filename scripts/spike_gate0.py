@@ -174,10 +174,8 @@ def run_spike(output: Path, library: CodecBuild | X265Library, ffmpeg: str,
                         raise ValueError("Zero-delta bit identity with stock failed")
                     if streams["same_binary_no_map"] != streams["zero"]:
                         raise ValueError("Zero-map changed the same-binary bitstream")
-                i_frames = set(range(10)) if gop == 1 else {0}
                 for name in (("plus6",) if quick else ("plus6", "minus6", "checkerboard")):
-                    evidence = verify_spatial_effect(traces["zero"], traces[name], maps[name],
-                                                     i_frames=i_frames)
+                    evidence = verify_spatial_effect(traces["zero"], traces[name], maps[name])
                     report.setdefault("spatial_evidence", []).append({"qp": qp, "gop": gop,
                         "map": name, "signed_median_qp_change": evidence,
                         "bit_change_percent": 100 * (len(streams[name]) / len(streams["zero"]) - 1)})

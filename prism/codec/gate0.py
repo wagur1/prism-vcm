@@ -61,20 +61,20 @@ def verify_spatial_effect(anchor: dict[tuple[int, int, int], float],
                           changed: dict[tuple[int, int, int], float],
                           offsets: np.ndarray, *,
                           min_pairs: int = 32, min_qg: int = 8,
-                          min_aggregate_median: float = 3.0,
-                          i_frames: set[int] | None = None) -> dict:
+                          min_aggregate_median: float = 3.0) -> dict:
     """CONFIG v1.4 section E-F0 CRF criteria (council esc#4 + esc#6, approved 9/9).
 
     Tier 1 (per frame x sign): >= min_pairs shared residual CUs over >= min_qg
-    QG16 cells; sign-fidelity 100% (any realized QP <= 0 FAILs); median band:
-    I-frame [5.5, 6.0], P-frame [2.5, 4.5] (CRF base-compensation band, AG-2
-    esc#6). Tier 2: aggregate median >= 3.00. All failures FAIL loudly with
+    QG16 cells; sign-fidelity 100% (any realized QP <= 0 FAILs); median band by
+    FEEDBACK STATE (AG-2 esc#7): frame 0 runs open-loop (uncompensated, band
+    [5.5, 6.0]); frames >= 1 are rate-control compensated (band [2.5, 4.5])
+    regardless of I/P syntax. Scope: continuous encode, fixed GOP, no mid-stream
+    scene-cut. Tier 2: aggregate median >= 3.00. All failures FAIL loudly with
     per-frame statistics returned alongside.
     """
     signs = sorted({int(np.sign(v)) for row in offsets for v in row if int(np.sign(v))})
     if not signs:
         raise ValueError("Offset map has no signed regions")
-    intra = {0} if i_frames is None else set(i_frames)
     shared = anchor.keys() & changed.keys()
     result: dict = {"per_frame": {}, "frames_checked": sorted({key[0] for key in anchor})}
     for sign in signs:
@@ -103,15 +103,15 @@ def verify_spatial_effect(anchor: dict[tuple[int, int, int], float],
                     f"{len(bad)}/{len(entries)} CUs with realized QP delta <= 0 "
                     "(AG-2 hard gate: 100% required)")
             median = float(np.median([d for d, _, _ in entries]))
-            kind = "I" if frame in intra else "P"
-            band = (5.5, 6.0) if kind == "I" else (2.5, 4.5)
+            state = "uncompensated" if frame == 0 else "compensated"
+            band = (5.5, 6.0) if frame == 0 else (2.5, 4.5)
             if not band[0] <= median <= band[1]:
                 raise ValueError(
-                    f"{kind}-frame {frame} sign {sign}: median {median:.3f} outside "
-                    f"CRF band {band} (CONFIG v1.4 E-F0)")
+                    f"{state} frame {frame} sign {sign}: median {median:.3f} outside "
+                    f"feedback-state band {band} (CONFIG v1.4 E-F0, AG-2 esc#7)")
             result["per_frame"][f"{frame}:{sign}"] = {
                 "pairs": len(entries), "qg_spread": len(qg_spread), "median": median,
-                "kind": kind}
+                "state": state}
         aggregate = float(np.median(samples))
         if aggregate < min_aggregate_median:
             raise ValueError(
