@@ -50,7 +50,7 @@ The encoder's per-frame **average** QP CSV is never a substitute.
 ## Trace semantics to verify
 
 - Exactly one row per final leaf CU, not per candidate, CTU average, PU or TU.
-  `m_numPartitions >> (2 * m_depth[part])` must describe the leaf's contiguous
+  `m_numPartitions >> (2 * m_cuDepth[part])` must describe the leaf's contiguous
   Z-scan span. Verify these member names and minimum-partition semantics in 3.5.
 - `m_cuPelX/Y + g_zscanToPelX/Y[part]` are luma pixel coordinates. Padding
   partitions are skipped before reading uninitialized depth. Check edge CTUs
@@ -121,3 +121,8 @@ built, with warning errors disabled and the original C++98 dialect. Verify HM
 without `-o` leaves reconstruction disabled; FFmpeg uses the null muxer. Raw YUV
 must stay in memory. Network/apt restrictions, upstream tag movement or missing
 repositories must remain nonzero build failures and a SKIP report.
+
+## Council review 2026-11-01 (v2)
+
+- v1 patch used `ctu->m_depth[part]`; x265 3.5 member is `m_cuDepth[part]` (C++ compile error in frameencoder.cpp, caught by GATE 0 quick v1 on Kaggle). Fixed per council verdict 20261101_021216 (CX-1/CX-3/ZC-2/ZC-3).
+- NASM on Kaggle is 2.16.01 (sufficient); asm messages in v1 log were warnings, not errors. Assembly stays ON by default; ENABLE_ASSEMBLY=OFF only as recorded fallback (identical flags stock+patched; F0-scope only, never F1 latency evidence).

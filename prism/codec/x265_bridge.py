@@ -37,6 +37,7 @@ class BuildPin:
     version: str
     abi: int
     picture_size: int
+    enable_assembly: bool = True
 
 
 @dataclass(frozen=True)

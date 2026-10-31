@@ -28,7 +28,7 @@ JOBS=${GATE0_JOBS:-$(nproc)}
 [[ $JOBS =~ ^[1-9][0-9]*$ ]] || die 'GATE0_JOBS must be a positive integer.'
 if (( JOBS > 4 )); then JOBS=4; fi
 missing=()
-for entry in cmake:cmake nasm:nasm git:git patch:patch gcc:gcc g++:g++ make:make ffmpeg:ffmpeg; do
+for entry in cmake:cmake git:git patch:patch gcc:gcc g++:g++ make:make ffmpeg:ffmpeg; do
     command -v "${entry#*:}" >/dev/null || missing+=("${entry%%:*}")
 done
 if ! dpkg-query -W -f='${Status}' libnuma-dev 2>/dev/null | grep -qx 'install ok installed'; then
@@ -48,8 +48,28 @@ if ! "$PYTHON" -c 'import numpy' ; then
 fi
 gcc --version
 cmake --version
-nasm -v
 ffmpeg -version
+
+step assembly_decision
+GATE0_ASSEMBLY=${GATE0_ASSEMBLY:-auto}
+case "$GATE0_ASSEMBLY" in
+    auto|ON|OFF) ;;
+    *) die 'GATE0_ASSEMBLY must be auto|ON|OFF' ;;
+esac
+NASM_VERSION=none
+if command -v nasm >/dev/null 2>&1; then NASM_VERSION=$(nasm -v 2>&1 | head -1); fi
+if [[ $GATE0_ASSEMBLY == OFF ]]; then
+    ASM=OFF; ASM_REASON='requested OFF via GATE0_ASSEMBLY (F0-scope only; F1 latency evidence requires ON build)'
+elif command -v nasm >/dev/null 2>&1 && printf '%s' "$NASM_VERSION" | grep -qE 'NASM version (2\.1[3-9]|2\.[2-9][0-9]|[3-9]\.)'; then
+    ASM=ON; ASM_REASON="system $NASM_VERSION"
+elif [[ $GATE0_ASSEMBLY == ON ]]; then
+    die 'GATE0_ASSEMBLY=ON requires NASM >= 2.13; none usable found'
+else
+    ASM=OFF; ASM_REASON='no usable NASM; recorded fallback per council 2026-11-01 (identical stock/patched flags; F0-scope only)'
+fi
+export PRISM_GATE0_ASSEMBLY="$ASM" PRISM_GATE0_ASM_REASON="$ASM_REASON" PRISM_GATE0_NASM_VERSION="$NASM_VERSION"
+printf 'ASSEMBLY=%s (%s)
+' "$ASM" "$ASM_REASON"
 
 # Old output pins must never survive a failed new build as current evidence.
 rm -f -- "$GATE/build-pin.json" "$GATE/stock-pin.json" "$GATE/stack.json"
@@ -99,6 +119,11 @@ else
     fi
 fi
 
+NASM_ARGS=()
+if [[ $ASM == ON ]]; then
+    NASM_ARGS=(-DNASM_EXECUTABLE="$(command -v nasm)" -DCMAKE_ASM_NASM_COMPILER="$(command -v nasm)")
+fi
+
 build_x265() {
     local src=$1 build=$2 shim=$3 label=$4
     step "configure_${label}_x265"
@@ -109,7 +134,7 @@ build_x265() {
         -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DHIGH_BIT_DEPTH=OFF -DMAIN12=OFF \
         -DLINKED_10BIT=OFF -DLINKED_12BIT=OFF \
         -DENABLE_SHARED=ON -DENABLE_CLI=OFF -DENABLE_PIC=ON \
-        -DEXPORT_C_API=ON -DENABLE_ASSEMBLY=ON -DENABLE_LIBNUMA=ON
+        -DEXPORT_C_API=ON -DENABLE_ASSEMBLY="$ASM" -DENABLE_LIBNUMA=ON "${NASM_ARGS[@]}"
     step "build_${label}_x265"
     cmake --build "$build" --parallel "$JOBS"
     cmake --install "$build"
@@ -158,12 +183,14 @@ probe_pin() {
     "$PYTHON" - "$pin" <<'PY'
 from dataclasses import asdict
 import json
+import os
 from pathlib import Path
 import sys
 from prism.codec.x265_bridge import X265Library
 codec = X265Library()
 pin = asdict(codec.pin)
 assert pin['abi'] > 0 and pin['picture_size'] > 0
+pin['enable_assembly'] = os.environ.get('PRISM_GATE0_ASSEMBLY', 'ON') == 'ON'
 Path(sys.argv[1]).write_text(json.dumps(pin, indent=2) + '\n', encoding='utf-8')
 print(json.dumps(pin, indent=2))
 PY
@@ -176,6 +203,7 @@ step record_provenance
 "$PYTHON" - "$GATE" <<'PY'
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -185,7 +213,10 @@ def commit(path):
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 stack = {
-    'instrument': 'x265_prism_residual_v1', 'patch_audit': 'pending first source/build review',
+    'instrument': 'x265_prism_residual_v1', 'patch_audit': 'council-reviewed 2026-11-01 (m_cuDepth fix; escalations/20261101_021216_verdict.md); verify at build time',
+    'enable_assembly': os.environ.get('PRISM_GATE0_ASSEMBLY', 'ON') == 'ON',
+    'asm_decision_reason': os.environ.get('PRISM_GATE0_ASM_REASON', ''),
+    'nasm_version': os.environ.get('PRISM_GATE0_NASM_VERSION', 'none'),
     'repo_commit': commit(gate.parent), 'x265_tag': '3.5',
     'x265_commit': commit(gate / 'src/x265'),
     'stock_commit': commit(gate / 'src/x265-stock'),

@@ -76,7 +76,7 @@ new file mode 100644
 +                ++part; // Padding partitions may have no initialized CU depth.
 +                continue;
 +            }
-+            const uint32_t depth = ctu->m_depth[part];
++            const uint32_t depth = ctu->m_cuDepth[part];
 +            const uint32_t count = depth < 16 ? ctu->m_numPartitions >> (2 * depth) : 0;
 +            if (!count || part + count > ctu->m_numPartitions)
 +            {
