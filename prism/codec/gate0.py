@@ -122,7 +122,9 @@ def verify_spatial_effect(anchor: dict[tuple[int, int, int], float],
             if frame == 0 or bands is None:
                 band = (5.0, 7.0) if frame == 0 else (2.5, 4.5)
             else:
-                band = bands[sign]
+                band = bands.get(sign, bands.get(str(sign)))
+                if band is None:
+                    raise ValueError(f"No band configured for sign {sign}")
             if not band[0] <= median <= band[1]:
                 raise ValueError(
                     f"{state} frame {frame} sign {sign}: median {median:.3f} outside "

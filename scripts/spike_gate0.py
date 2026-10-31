@@ -177,9 +177,9 @@ def run_spike(output: Path, library: CodecBuild | X265Library, ffmpeg: str,
                 # AG-2 esc#8 (synthesized with CX-1): direction-asymmetric
                 # provisional gross-guard bands; checkerboard dual-sign rules.
                 band_profiles = {
-                    "plus6": ({"1": (2.5, 4.5)}, 1.0, None),
-                    "minus6": ({"-1": (3.5, 6.0)}, 1.0, None),
-                    "checkerboard": ({"1": (2.5, 6.0), "-1": (3.5, 6.0)}, 0.98, 7.0),
+                    "plus6": ({1: (2.5, 4.5)}, 1.0, None),
+                    "minus6": ({-1: (3.5, 6.0)}, 1.0, None),
+                    "checkerboard": ({1: (2.5, 6.0), -1: (3.5, 6.0)}, 0.98, 7.0),
                 }
                 for name in (("plus6",) if quick else ("plus6", "minus6", "checkerboard")):
                     bands, min_fid, min_sep = band_profiles[name]
