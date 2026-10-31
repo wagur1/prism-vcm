@@ -1,7 +1,9 @@
-"""Offline ten-frame CQP spike. SKIP is not PASS and never unlocks training."""
+"""Ten-frame CQP spike. SKIP and SMOKE_PASS never unlock training."""
 from __future__ import annotations
 
 import argparse
+import csv
+from dataclasses import asdict, dataclass
 import json
 import os
 from pathlib import Path
@@ -18,6 +20,15 @@ from prism.codec.x265_bridge import (BuildPin, EncoderConfig, X265Encoder,
                                     X265Library, X265Unavailable, qg_shape)
 
 
+@dataclass(frozen=True)
+class CodecBuild:
+    """Paths and expected pin; do not dlopen two builds with the same SONAME."""
+
+    shim_path: Path
+    library_path: Path
+    pin: BuildPin
+
+
 def synthetic_frames(width: int, height: int) -> list[bytes]:
     rng = np.random.default_rng(0)
     texture = rng.integers(16, 236, (height, width), dtype=np.uint8)
@@ -25,104 +36,170 @@ def synthetic_frames(width: int, height: int) -> list[bytes]:
     return [np.roll(texture, shift=index * 2, axis=1).tobytes() + chroma for index in range(10)]
 
 
-def run_spike(output: Path, library: X265Library, ffmpeg: str,
-              reference_command: list[str], width: int = 1920, height: int = 1080,
-              stock: X265Library | None = None) -> dict:
-    if not reference_command or not any("{bitstream}" in arg for arg in reference_command):
-        raise ValueError("Reference decoder command must contain {bitstream} and write no raw disk output")
-    output.mkdir(parents=True, exist_ok=True)
-    frames = synthetic_frames(width, height)
+def offset_maps(width: int, height: int) -> dict[str, np.ndarray]:
     shape = qg_shape(width, height)
     yy, xx = np.indices(shape)
-    maps = {"zero": np.zeros(shape, np.float32), "plus6": np.full(shape, 6, np.float32),
+    return {"zero": np.zeros(shape, np.float32), "plus6": np.full(shape, 6, np.float32),
             "minus6": np.full(shape, -6, np.float32),
             "checkerboard": np.where((yy // 4 + xx // 4) % 2, 6, -6).astype(np.float32)}
+
+
+def encode_worker(job: dict) -> None:
+    """One library pair per fresh process; raw YUV exists only in Python memory."""
+    prefix = Path(job["prefix"])
+    width, height = job["width"], job["height"]
+    codec = X265Library(pin=BuildPin(**job["pin"]))
+    offsets = offset_maps(width, height).get(job["map"])
+    cfg = EncoderConfig(**job["config"])
+    with X265Encoder(codec, width, height, cfg, prefix.with_suffix(".csv")) as enc:
+        stream = b"".join(enc.encode(frame, offsets) for frame in synthetic_frames(width, height))
+        stream += enc.flush()
+    prefix.with_suffix(".hevc").write_bytes(stream)
+    bits = frame_bits(prefix.with_suffix(".csv"))
+    with prefix.with_suffix(".bits.csv").open("w", newline="", encoding="utf-8") as target:
+        writer = csv.writer(target)
+        writer.writerow(["encode_order", "bits"])
+        writer.writerows(enumerate(bits))
+
+
+def encode_condition(prefix: Path, name: str, codec: CodecBuild | X265Library,
+                     cfg: EncoderConfig, width: int, height: int) -> None:
+    job = {"prefix": str(prefix.resolve()), "map": name, "pin": asdict(codec.pin),
+           "config": asdict(cfg), "width": width, "height": height}
+    job_path = prefix.with_suffix(".job.json")
+    job_path.write_text(json.dumps(job, indent=2), encoding="utf-8")
+    env = os.environ.copy()
+    env["PRISM_X265_SHIM"] = str(codec.shim_path.resolve())
+    env["PRISM_X265_LIBRARY"] = str(codec.library_path.resolve())
+    # Each worker starts with its own loader search path, including the stock worker.
+    env["LD_LIBRARY_PATH"] = str(codec.library_path.resolve().parent)
+    env.pop("PRISM_X265_QP_TRACE", None)
+    if name != "stock":
+        env["PRISM_X265_QP_TRACE"] = str(prefix.with_suffix(".trace.csv").resolve())
+    log_path = prefix.with_suffix(".encode.log")
+    with log_path.open("w", encoding="utf-8") as log:
+        result = subprocess.run([sys.executable, str(Path(__file__).resolve()),
+                                 "--encode-job-json", str(job_path.resolve())],
+                                env=env, stdout=log, stderr=subprocess.STDOUT)
+    log_text = log_path.read_text(encoding="utf-8", errors="replace")
+    if result.returncode or "x265_prism_residual_v1:" in log_text:
+        tail = log_text[-6000:]
+        raise RuntimeError(f"Encode {prefix.name} exited {result.returncode}:\n{tail}")
+
+
+def run_spike(output: Path, library: CodecBuild | X265Library, ffmpeg: str,
+              reference_command: list[str], width: int = 1920, height: int = 1080,
+              stock: CodecBuild | X265Library | None = None, quick: bool = False) -> dict:
+    if (not isinstance(reference_command, list) or not reference_command
+            or not all(isinstance(arg, str) for arg in reference_command)
+            or not any("{bitstream}" in arg for arg in reference_command)):
+        raise ValueError("Reference decoder argv must contain {bitstream} and write no raw disk output")
+    if stock is None and not quick:
+        raise X265Unavailable("Full GATE 0 requires a separately pinned stock build")
+    output.mkdir(parents=True, exist_ok=True)
+    maps = offset_maps(width, height)
     report: dict = {"status": "RUNNING", "instrument": "x265_prism_residual_v1",
-                    "frames_per_encode": 10, "encodes": 0, "runs": [], "rc": "CQP"}
-    previous_trace = os.environ.get("PRISM_X265_QP_TRACE")
+                    "mode": "quick" if quick else "full", "gate0_complete": False,
+                    "frames_per_encode": 10, "encode_attempts": 0,
+                    "encodes": 0, "encoded_frames": 0,
+                    "runs": [], "rc": "CQP", "pin": asdict(library.pin),
+                    "stock_pin": asdict(stock.pin) if stock else None}
     try:
-        for qp in (27, 32, 37, 42, 47):
-            for gop in (1, 10):
+        for qp in ((32,) if quick else (27, 32, 37, 42, 47)):
+            for gop in ((10,) if quick else (1, 10)):
                 cfg = EncoderConfig(qp=qp, gop=gop, bframes=0 if gop == 1 else 3)
                 traces, streams = {}, {}
-                for name, offsets in {"stock": None, "same_binary_no_map": None, **maps}.items():
+                conditions = ("zero", "plus6") if quick else (
+                    "stock", "same_binary_no_map", "zero", "plus6", "minus6", "checkerboard")
+                for name in conditions:
                     prefix = output / f"qp{qp}_gop{gop}_{name}"
-                    trace_path = prefix.with_suffix(".trace.csv")
-                    if trace_path.exists():
-                        raise ValueError("Use a fresh output directory; stale traces are not evidence")
-                    os.environ["PRISM_X265_QP_TRACE"] = str(trace_path.resolve())
-                    codec = (stock or library) if name == "stock" else library
-                    report["encodes"] += 10
-                    with X265Encoder(codec, width, height, cfg, prefix.with_suffix(".csv")) as enc:
-                        stream = b"".join(enc.encode(frame, offsets) for frame in frames) + enc.flush()
-                    streams[name] = stream
+                    if any(prefix.parent.glob(prefix.name + ".*")):
+                        raise ValueError("Use a fresh output directory; stale artifacts are not evidence")
+                    codec = stock if name == "stock" else library
+                    assert codec is not None
+                    print(f"GATE 0: QP={qp} GOP={gop} map={name}", flush=True)
+                    report["encode_attempts"] += 1
+                    encode_condition(prefix, name, codec, cfg, width, height)
+                    report["encodes"] += 1
+                    report["encoded_frames"] += 10
                     bitstream = prefix.with_suffix(".hevc")
-                    bitstream.write_bytes(stream)  # Only compressed bitstreams may touch disk.
-                    subprocess.run([ffmpeg, "-v", "error", "-xerror", "-i", str(bitstream),
-                                    "-f", "null", "-"], check=True, stdout=subprocess.DEVNULL)
-                    subprocess.run([arg.replace("{bitstream}", str(bitstream.resolve()))
-                                    for arg in reference_command], check=True,
-                                   stdout=subprocess.DEVNULL)
+                    streams[name] = bitstream.read_bytes()
+                    with prefix.with_suffix(".decode.log").open("w", encoding="utf-8") as log:
+                        subprocess.run([ffmpeg, "-v", "error", "-xerror", "-c:v", "hevc",
+                                        "-i", str(bitstream.resolve()), "-f", "null", "-"],
+                                       check=True, stdout=log, stderr=subprocess.STDOUT)
+                        subprocess.run([arg.replace("{bitstream}", str(bitstream.resolve()))
+                                        for arg in reference_command], check=True,
+                                       stdout=log, stderr=subprocess.STDOUT)
                     bits = frame_bits(prefix.with_suffix(".csv"))
                     if name in maps:
-                        traces[name] = residual_trace(trace_path, width, height)
+                        traces[name] = residual_trace(prefix.with_suffix(".trace.csv"), width, height)
                     report["runs"].append({"qp": qp, "gop": gop, "map": name,
-                        "whole_bitstream_bytes": len(stream), "per_frame_bits": bits})
-                if streams["stock"] != streams["zero"]:
-                    raise ValueError("Zero-delta bit identity with stock failed")
-                if streams["same_binary_no_map"] != streams["zero"]:
-                    raise ValueError("Zero-map changed the same-binary bitstream")
-                for name in ("plus6", "minus6", "checkerboard"):
+                        "whole_bitstream_bytes": len(streams[name]), "per_frame_bits": bits})
+                if not quick:
+                    if streams["stock"] != streams["zero"]:
+                        raise ValueError("Zero-delta bit identity with stock failed")
+                    if streams["same_binary_no_map"] != streams["zero"]:
+                        raise ValueError("Zero-map changed the same-binary bitstream")
+                for name in (("plus6",) if quick else ("plus6", "minus6", "checkerboard")):
                     evidence = verify_spatial_effect(traces["zero"], traces[name], maps[name])
                     report.setdefault("spatial_evidence", []).append({"qp": qp, "gop": gop,
                         "map": name, "signed_median_qp_change": evidence,
                         "bit_change_percent": 100 * (len(streams[name]) / len(streams["zero"]) - 1)})
-        report["status"] = "PASS"
+        report["status"] = "SMOKE_PASS" if quick else "PASS"
+        report["gate0_complete"] = not quick
     except Exception as exc:
         report["status"] = "FAIL"
         report["reason"] = str(exc)
-        raise
     finally:
-        if previous_trace is None:
-            os.environ.pop("PRISM_X265_QP_TRACE", None)
-        else:
-            os.environ["PRISM_X265_QP_TRACE"] = previous_trace
         (output / "encode_manifest.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
-    report["pin"] = library.pin.__dict__
-    report["stock_pin"] = (stock or library).pin.__dict__
     return report
+
+
+def read_build(shim: Path | None, library: Path | None, pin: Path | None) -> CodecBuild:
+    if not shim or not library or not pin or not all(p.is_file() for p in (shim, library, pin)):
+        raise X265Unavailable("Pinned build requires existing library, shim, and pin files")
+    return CodecBuild(shim.resolve(), library.resolve(), BuildPin(**json.loads(pin.read_text())))
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("outputs/gate0"))
-    parser.add_argument("--pin", type=Path, help="Previously reviewed BuildPin JSON")
+    parser.add_argument("--pin", type=Path, help="BuildPin JSON; freshly built pins still require review")
     parser.add_argument("--stock-pin", type=Path)
     parser.add_argument("--stock-shim", type=Path)
     parser.add_argument("--stock-library", type=Path)
     parser.add_argument("--ffmpeg", default="ffmpeg")
     parser.add_argument("--reference-command-json", help='HEVC reference argv JSON with {bitstream}')
+    parser.add_argument("--quick", action="store_true", default=os.environ.get("GATE0_QUICK") == "1")
+    parser.add_argument("--encode-job-json", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.encode_job_json:
+        encode_worker(json.loads(args.encode_job_json.read_text(encoding="utf-8")))
+        return 0
     args.output.mkdir(parents=True, exist_ok=True)
     try:
-        library = X265Library(pin=BuildPin(**json.loads(args.pin.read_text())) if args.pin else None)
-        if args.pin is None or not shutil.which(args.ffmpeg) or not args.reference_command_json:
-            raise X265Unavailable("Pinned build and both independent HEVC decoders are required")
+        shim, library_path = os.environ.get("PRISM_X265_SHIM"), os.environ.get("PRISM_X265_LIBRARY")
+        library = read_build(Path(shim) if shim else None,
+                             Path(library_path) if library_path else None, args.pin)
+        if not shutil.which(args.ffmpeg) or not args.reference_command_json:
+            raise X265Unavailable("Both independent HEVC decoders are required")
+        reference = json.loads(args.reference_command_json)
+        if not isinstance(reference, list) or not reference or not isinstance(reference[0], str):
+            raise ValueError("Reference decoder must be a nonempty argv array")
+        if not shutil.which(reference[0]):
+            raise X265Unavailable(f"Reference decoder unavailable: {reference[0]}")
         stock = None
-        if args.stock_library or args.stock_shim:
-            if not (args.stock_library and args.stock_shim and args.stock_pin):
-                raise ValueError("Separate stock builds require library, shim, and pin")
-            stock = X265Library(args.stock_shim, args.stock_library,
-                                BuildPin(**json.loads(args.stock_pin.read_text())))
-        report = run_spike(args.output, library, args.ffmpeg,
-                           json.loads(args.reference_command_json), stock=stock)
+        if args.stock_library or args.stock_shim or args.stock_pin:
+            stock = read_build(args.stock_shim, args.stock_library, args.stock_pin)
+        report = run_spike(args.output, library, args.ffmpeg, reference, stock=stock, quick=args.quick)
     except X265Unavailable as exc:
-        report = {"status": "SKIP", "reason": str(exc)}
+        report = {"status": "SKIP", "gate0_complete": False, "reason": str(exc)}
     except Exception as exc:
-        report = {"status": "FAIL", "reason": str(exc)}
+        report = {"status": "FAIL", "gate0_complete": False, "reason": str(exc)}
     (args.output / "gate0.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report, indent=2))
-    return 1 if report["status"] == "FAIL" else 0
+    return 0 if report["status"] in {"PASS", "SMOKE_PASS"} else 1
 
 
 if __name__ == "__main__":

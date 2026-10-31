@@ -1,0 +1,7 @@
+/src/
+/build/
+/build_log.txt
+/build-pin.json
+/stock-pin.json
+/stack.json
+/patch-rejects.diff

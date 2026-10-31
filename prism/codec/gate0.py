@@ -21,9 +21,19 @@ def frame_bits(csv_path: Path, expected: int = 10) -> list[int]:
 def residual_trace(path: Path, width: int, height: int) -> dict[tuple[int, int, int], float]:
     """Read x265_prism_residual_v1: frame,x,y,qp,has_residual,skip (pixel coordinates)."""
     valid: dict[tuple[int, int, int], float] = {}
+    seen: set[tuple[int, int, int]] = set()
     with path.open(newline="", encoding="utf-8") as stream:
-        for row in csv.DictReader(stream):
+        reader = csv.DictReader(stream)
+        if reader.fieldnames != ["frame", "x", "y", "qp", "has_residual", "skip"]:
+            raise ValueError("Expected x265_prism_residual_v1 CSV header")
+        for row in reader:
             frame, x, y = (int(row[key]) for key in ("frame", "x", "y"))
+            key = (frame, x, y)
+            if key in seen:
+                raise ValueError("Duplicate CU trace coordinates; candidates/stale traces are not evidence")
+            seen.add(key)
+            if row["skip"] not in {"0", "1"} or row["has_residual"] not in {"0", "1"}:
+                raise ValueError("Residual and skip flags must be 0 or 1")
             if not 0 <= frame < 10 or not (0 <= x < width and 0 <= y < height):
                 continue  # Exclude padding and retain only the visible 30 x 17 CTUs at 1080p.
             if int(row["skip"]) or not int(row["has_residual"]):

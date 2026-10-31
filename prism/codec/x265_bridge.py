@@ -97,6 +97,8 @@ class X265Library:
         library = library or os.environ.get("PRISM_X265_LIBRARY")
         if not shim or not library or not Path(shim).is_file() or not Path(library).is_file():
             raise X265Unavailable("Set PRISM_X265_SHIM and PRISM_X265_LIBRARY to local builds")
+        self.shim_path = Path(shim).resolve()
+        self.library_path = Path(library).resolve()
         self._dll_dir = (os.add_dll_directory(str(Path(library).resolve().parent))
                          if os.name == "nt" else None)
         try:
