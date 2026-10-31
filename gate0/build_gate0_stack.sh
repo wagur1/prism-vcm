@@ -161,17 +161,27 @@ mkdir -p "$GATE/build/hm/bin"
 # append these flags after HM's own flags and use its original C++98 dialect.
 cat > "$GATE/build/hm/cxx" <<'COMPILER'
 #!/usr/bin/env bash
-exec g++ "$@" -Wno-error -std=gnu++98
+# Council escalation #2 (20261101_025850): HM makefiles inject -Werror; modern GCC
+# turns old HM C++98 diagnostics into hard errors. Strip -Werror tokens (toolchain
+# diagnostics only - real compile errors still abort); zero source modification.
+args=()
+for a in "$@"; do
+  case "$a" in
+    -Werror|-Werror=*) ;;
+    *) args+=("$a") ;;
+  esac
+done
+exec g++ "${args[@]}" -Wno-error -std=gnu++98
 COMPILER
 chmod +x "$GATE/build/hm/cxx"
 for component in TLibCommon TLibVideoIO TLibDecoder TAppCommon; do
     step "build_HM_${component}"
     make -C "$GATE/src/HM/build/linux/lib/$component" -j "$JOBS" \
-        CXX="$GATE/build/hm/cxx" release
+        CPP="$GATE/build/hm/cxx" release
 done
 step build_HM_TAppDecoderStatic
 make -C "$GATE/src/HM/build/linux/app/TAppDecoder" -j "$JOBS" \
-    CXX="$GATE/build/hm/cxx" release
+    CPP="$GATE/build/hm/cxx" release
 [[ -x "$GATE/src/HM/bin/TAppDecoderStatic" ]] || die 'HM build did not produce bin/TAppDecoderStatic.'
 cp -- "$GATE/src/HM/bin/TAppDecoderStatic" "$GATE/build/hm/bin/TAppDecoderStatic"
 
@@ -223,7 +233,13 @@ stack = {
     'hm_tag': 'HM-16.2', 'hm_commit': commit(gate / 'src/HM'),
     'patch_sha256': sha(gate / 'x265_residual_patch.patch'),
     'hm_sha256': sha(gate / 'build/hm/bin/TAppDecoderStatic'),
-    'hm_compiler_policy': 'g++ -Wno-error -std=gnu++98; decoder and dependencies only',
+    'hm_compiler_policy': {
+        'source_tag': 'HM-16.2', 'source_diff': 'NONE',
+        'toolchain': 'gcc-' + subprocess.check_output(['gcc', '-dumpfullversion'], text=True).strip(),
+        'flags_override': {'stripped': ['-Werror'], 'added': ['-Wno-error', '-std=gnu++98']},
+        'rationale': 'Toolchain diagnostic compatibility; zero code modification (council 20261101_025850)',
+    },
+    'hm_conformance_required': 'decoder exit 0; cross-check reconstruction MD5 vs FFmpeg decode (SEIDecodedPictureHash) in full run',
     'library': str(gate / 'build/x265/install/lib/libx265.so'),
     'shim': str(gate / 'build/shim/libprism_x265.so'),
     'stock_library': str(gate / 'build/stock/x265/install/lib/libx265.so'),
