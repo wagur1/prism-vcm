@@ -34,5 +34,7 @@ outputs/
 .uv-cache/
 .test-deps/
 logs/kaggle/*
+!logs/kaggle/gate0/
+!logs/kaggle/gate0/**
 !logs/kaggle/.gitkeep
 !logs/kaggle/README.md
