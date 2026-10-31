@@ -174,11 +174,27 @@ def run_spike(output: Path, library: CodecBuild | X265Library, ffmpeg: str,
                         raise ValueError("Zero-delta bit identity with stock failed")
                     if streams["same_binary_no_map"] != streams["zero"]:
                         raise ValueError("Zero-map changed the same-binary bitstream")
+                # AG-2 esc#8 (synthesized with CX-1): direction-asymmetric
+                # provisional gross-guard bands; checkerboard dual-sign rules.
+                band_profiles = {
+                    "plus6": ({"1": (2.5, 4.5)}, 1.0, None),
+                    "minus6": ({"-1": (3.5, 6.0)}, 1.0, None),
+                    "checkerboard": ({"1": (2.5, 6.0), "-1": (3.5, 6.0)}, 0.98, 7.0),
+                }
                 for name in (("plus6",) if quick else ("plus6", "minus6", "checkerboard")):
-                    evidence = verify_spatial_effect(traces["zero"], traces[name], maps[name])
+                    bands, min_fid, min_sep = band_profiles[name]
+                    evidence = verify_spatial_effect(traces["zero"], traces[name], maps[name],
+                                                     bands=bands, min_fidelity=min_fid,
+                                                     min_separation=min_sep)
                     report.setdefault("spatial_evidence", []).append({"qp": qp, "gop": gop,
                         "map": name, "signed_median_qp_change": evidence,
                         "bit_change_percent": 100 * (len(streams[name]) / len(streams["zero"]) - 1)})
+        zero_bits_by_group = {(r["qp"], r["gop"]): r["per_frame_bits"]
+                              for r in report["runs"] if r["map"] == "zero"}
+        for r in report["runs"]:
+            zb = zero_bits_by_group.get((r["qp"], r["gop"]))
+            if zb and r["map"] != "zero" and sum(zb) > 0:
+                r["bit_ratio_vs_zero_whole"] = sum(r["per_frame_bits"]) / sum(zb)
         report["synthetic_content_sha256"] = synthetic_content_sha256(width, height)
         report["synthetic_generator"] = {"seed_root": 0, "numpy": getattr(np, "__version__", "unknown"),
                                          "frames": 10, "independent_per_frame": True}

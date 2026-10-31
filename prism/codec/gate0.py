@@ -61,16 +61,23 @@ def verify_spatial_effect(anchor: dict[tuple[int, int, int], float],
                           changed: dict[tuple[int, int, int], float],
                           offsets: np.ndarray, *,
                           min_pairs: int = 32, min_qg: int = 8,
-                          min_aggregate_median: float = 3.0) -> dict:
+                          min_aggregate_median: float = 3.0,
+                          bands: dict[int, tuple[float, float]] | None = None,
+                          min_fidelity: float = 1.0,
+                          min_separation: float | None = None) -> dict:
     """CONFIG v1.4 section E-F0 CRF criteria (council esc#4 + esc#6, approved 9/9).
 
     Tier 1 (per frame x sign): >= min_pairs shared residual CUs over >= min_qg
-    QG16 cells; sign-fidelity 100% (any realized QP <= 0 FAILs); median band by
-    FEEDBACK STATE (AG-2 esc#7): frame 0 runs open-loop (uncompensated, band
-    [5.5, 6.0]); frames >= 1 are rate-control compensated (band [2.5, 4.5])
-    regardless of I/P syntax. Scope: continuous encode, fixed GOP, no mid-stream
-    scene-cut. Tier 2: aggregate median >= 3.00. All failures FAIL loudly with
-    per-frame statistics returned alongside.
+    QG16 cells; sign-fidelity is enforced per min_fidelity (uniform maps 100%,
+    dual-sign checkerboard 98% - AG-2 esc#8); median band by FEEDBACK STATE
+    (AG-2 esc#7): frame 0 runs open-loop (uncompensated, band [5, 7] per CX-1
+    esc#8); frames >= 1 are rate-control compensated with DIRECTION-ASYMMETRIC
+    provisional bands (AG-2 esc#8 + CX-1 esc#8): plus [2.5, 4.5], minus
+    [3.5, 6.0] (observed 4.0-5.0 across QP/GOP; wide gross-guard until CX-1
+    deep-telemetry calibration locks final bands). Checkerboard: wide
+    gross-guard bands + per-sign separation >= 7.0. Scope: continuous encode,
+    fixed GOP, no mid-stream scene-cut. Tier 2: aggregate median >= 3.00. All
+    failures FAIL loudly.
     """
     signs = sorted({int(np.sign(v)) for row in offsets for v in row if int(np.sign(v))})
     if not signs:
@@ -102,20 +109,43 @@ def verify_spatial_effect(anchor: dict[tuple[int, int, int], float],
                     f"Sign-fidelity violation frame {frame} sign {sign}: "
                     f"{len(bad)}/{len(entries)} CUs with realized QP delta <= 0 "
                     "(AG-2 hard gate: 100% required)")
-            median = float(np.median([d for d, _, _ in entries]))
+            deltas = [d for d, _, _ in entries]
+            bad = [d for d in deltas if d <= 0]
+            fidelity = 1.0 - len(bad) / len(entries)
+            if fidelity < min_fidelity:
+                raise ValueError(
+                    f"Sign-fidelity violation frame {frame} sign {sign}: "
+                    f"{len(bad)}/{len(entries)} CUs with realized QP delta <= 0 "
+                    f"(fidelity={fidelity:.4f} < {min_fidelity})")
+            median = float(np.median(deltas))
             state = "uncompensated" if frame == 0 else "compensated"
-            band = (5.5, 6.0) if frame == 0 else (2.5, 4.5)
+            if frame == 0 or bands is None:
+                band = (5.0, 7.0) if frame == 0 else (2.5, 4.5)
+            else:
+                band = bands[sign]
             if not band[0] <= median <= band[1]:
                 raise ValueError(
                     f"{state} frame {frame} sign {sign}: median {median:.3f} outside "
-                    f"feedback-state band {band} (CONFIG v1.4 E-F0, AG-2 esc#7)")
+                    f"feedback-state band {band} (CONFIG v1.4 E-F0, AG-2/CX-1 esc#8)")
+            sorted_d = sorted(deltas)
             result["per_frame"][f"{frame}:{sign}"] = {
                 "pairs": len(entries), "qg_spread": len(qg_spread), "median": median,
-                "state": state}
+                "state": state, "fidelity": fidelity,
+                "p10": float(sorted_d[max(0, int(0.10 * len(sorted_d)) - 1)]),
+                "p90": float(sorted_d[min(len(sorted_d) - 1, int(0.90 * len(sorted_d)))])}
         aggregate = float(np.median(samples))
         if aggregate < min_aggregate_median:
             raise ValueError(
                 f"Aggregate realized QP effect too weak for sign {sign}: "
                 f"median={aggregate:.3f} < {min_aggregate_median} (CONFIG v1.4 E-F0)")
         result[str(sign)] = aggregate
+    if min_separation is not None:
+        agg_keys = [k for k in result if k in ("1", "-1")]
+        if len(agg_keys) == 2:
+            sep = result["1"] - result["-1"]
+            if sep < min_separation:
+                raise ValueError(
+                    f"Checkerboard per-sign separation too weak: "
+                    f"median+ - median- = {sep:.3f} < {min_separation} (AG-2 esc#8)")
+            result["separation"] = float(sep)
     return result
