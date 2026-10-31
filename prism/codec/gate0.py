@@ -61,17 +61,20 @@ def verify_spatial_effect(anchor: dict[tuple[int, int, int], float],
                           changed: dict[tuple[int, int, int], float],
                           offsets: np.ndarray, *,
                           min_pairs: int = 32, min_qg: int = 8,
-                          min_aggregate_median: float = 4.0) -> dict:
-    """Council esc#4 (20261101_034554): two-tier spatial-effect gate.
+                          min_aggregate_median: float = 3.0,
+                          i_frames: set[int] | None = None) -> dict:
+    """CONFIG v1.4 section E-F0 CRF criteria (council esc#4 + esc#6, approved 9/9).
 
-    Tier 1 (per frame x sign): >= min_pairs shared residual CUs spread over
-    >= min_qg QG16 cells, median signed QP change > 0. Tier 2 (aggregate):
-    median signed QP change >= min_aggregate_median. Frames without enough
-    evidence FAIL loudly (no silent skipping); per-frame statistics returned.
+    Tier 1 (per frame x sign): >= min_pairs shared residual CUs over >= min_qg
+    QG16 cells; sign-fidelity 100% (any realized QP <= 0 FAILs); median band:
+    I-frame [5.5, 6.0], P-frame [2.5, 4.5] (CRF base-compensation band, AG-2
+    esc#6). Tier 2: aggregate median >= 3.00. All failures FAIL loudly with
+    per-frame statistics returned alongside.
     """
     signs = sorted({int(np.sign(v)) for row in offsets for v in row if int(np.sign(v))})
     if not signs:
         raise ValueError("Offset map has no signed regions")
+    intra = {0} if i_frames is None else set(i_frames)
     shared = anchor.keys() & changed.keys()
     result: dict = {"per_frame": {}, "frames_checked": sorted({key[0] for key in anchor})}
     for sign in signs:
@@ -93,17 +96,26 @@ def verify_spatial_effect(anchor: dict[tuple[int, int, int], float],
                 raise ValueError(
                     f"Insufficient residual pairs frame {frame} sign {sign}: "
                     f"pairs={len(entries)} (<{min_pairs}) qg_spread={len(qg_spread)} (<{min_qg})")
-            median = float(np.median([d for d, _, _ in entries]))
-            if median <= 0:
+            bad = [d for d, _, _ in entries if d <= 0]
+            if bad:
                 raise ValueError(
-                    f"No positive realized QP effect in frame {frame}, sign {sign} "
-                    f"(median={median:.3f})")
+                    f"Sign-fidelity violation frame {frame} sign {sign}: "
+                    f"{len(bad)}/{len(entries)} CUs with realized QP delta <= 0 "
+                    "(AG-2 hard gate: 100% required)")
+            median = float(np.median([d for d, _, _ in entries]))
+            kind = "I" if frame in intra else "P"
+            band = (5.5, 6.0) if kind == "I" else (2.5, 4.5)
+            if not band[0] <= median <= band[1]:
+                raise ValueError(
+                    f"{kind}-frame {frame} sign {sign}: median {median:.3f} outside "
+                    f"CRF band {band} (CONFIG v1.4 E-F0)")
             result["per_frame"][f"{frame}:{sign}"] = {
-                "pairs": len(entries), "qg_spread": len(qg_spread), "median": median}
+                "pairs": len(entries), "qg_spread": len(qg_spread), "median": median,
+                "kind": kind}
         aggregate = float(np.median(samples))
         if aggregate < min_aggregate_median:
             raise ValueError(
                 f"Aggregate realized QP effect too weak for sign {sign}: "
-                f"median={aggregate:.3f} < {min_aggregate_median}")
+                f"median={aggregate:.3f} < {min_aggregate_median} (CONFIG v1.4 E-F0)")
         result[str(sign)] = aggregate
     return result

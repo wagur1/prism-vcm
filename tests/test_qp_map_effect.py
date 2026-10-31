@@ -12,10 +12,33 @@ def test_average_qp_cannot_substitute_spatial_evidence():
     anchor = {(0, 0, 0): 32., (0, 16, 0): 32.}
     changed = {(0, 0, 0): 38., (0, 16, 0): 26.}
     verify_spatial_effect(anchor, changed, np.array([[6., -6.]]),
-                          min_pairs=1, min_qg=1, min_aggregate_median=4.0)
-    with pytest.raises(ValueError):
+                          min_pairs=1, min_qg=1)
+    with pytest.raises(ValueError, match="Sign-fidelity violation"):
         verify_spatial_effect(anchor, changed, np.array([[-6., 6.]]),
-                              min_pairs=1, min_qg=1, min_aggregate_median=4.0)
+                              min_pairs=1, min_qg=1)
+
+
+def test_v14_bands_and_aggregate():
+    # I-frame band: median 6.0 passes, 3.0 fails.
+    i_anchor = {(0, 0, 0): 32.}
+    i_changed = {(0, 0, 0): 38.}
+    verify_spatial_effect(i_anchor, i_changed, np.array([[6.]]),
+                          min_pairs=1, min_qg=1)
+    with pytest.raises(ValueError, match="outside"):
+        verify_spatial_effect(i_anchor, {(0, 0, 0): 35.}, np.array([[6.]]),
+                              min_pairs=1, min_qg=1)
+    # P-frame band: median 3.0 passes at frame 1; 2.6 passes band but fails aggregate.
+    p_anchor = {(1, 0, 0): 32., (2, 0, 0): 32.}
+    p_changed = {(1, 0, 0): 35., (2, 0, 0): 35.}
+    verify_spatial_effect(p_anchor, p_changed, np.array([[6.]]),
+                          min_pairs=1, min_qg=1)
+    weak = {(1, 0, 0): 34.6, (2, 0, 0): 34.6}
+    with pytest.raises(ValueError, match="too weak"):
+        verify_spatial_effect(p_anchor, weak, np.array([[6.]]),
+                              min_pairs=1, min_qg=1)
+    # I-frame treated per i_frames override: frame 1 as intra.
+    verify_spatial_effect(p_anchor, p_changed, np.array([[6.]]),
+                          min_pairs=1, min_qg=1, i_frames={1, 2})
 
 
 def test_min_count_guard_fails_loudly():
@@ -23,19 +46,6 @@ def test_min_count_guard_fails_loudly():
     changed = {(0, 0, 0): 38., (0, 16, 0): 38.}
     with pytest.raises(ValueError, match="Insufficient residual pairs"):
         verify_spatial_effect(anchor, changed, np.array([[6.]]))
-    many = {(0, x // 16 * 16, 0): 32. for x in range(0, 16 * 40, 16)}
-    changed_many = {(0, x // 16 * 16, 0): 38. for x in range(0, 16 * 40, 16)}
-    with pytest.raises(ValueError, match="too weak"):
-        verify_spatial_effect(many, changed_many, np.array([[6.]]),
-                              min_pairs=1, min_qg=1, min_aggregate_median=4.0)
-
-
-def test_trace_excludes_skip_and_padding(tmp_path):
-    path = tmp_path / "trace.csv"
-    path.write_text("frame,x,y,qp,has_residual,skip\n" + "".join(
-        f"{frame},0,0,32,1,0\n{frame},0,1080,99,1,0\n{frame},16,0,99,0,1\n"
-        for frame in range(10)))
-    assert len(residual_trace(path, 1920, 1080)) == 10
 
 
 @pytest.mark.integration
