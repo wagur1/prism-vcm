@@ -2,7 +2,7 @@
 
 **Preprocessing for Video Coding for Machines** — Offline foundation-teacher distillation → single-shot edge student (ΔQ + bounded Δx) → standard-compliant H.265/VVC bitstream. Zero-trial, single forward, single encode.
 
-> **Binding spec:** [`docs/CONFIG_V1_3.md`](docs/CONFIG_V1_3.md) — approved 9/9 by the tri-party council (Codex / Antigravity / ZCode), 2026-11-01. Council record: [`docs/HOI_DONG_9_KET_QUA.md`](docs/HOI_DONG_9_KET_QUA.md).
+> **Binding spec:** [`docs/CONFIG_V1_4.md`](docs/CONFIG_V1_4.md) (amendment §D/§E: CRF primary) trên nền [`docs/CONFIG_V1_3.md`](docs/CONFIG_V1_3.md) — cả hai đều thông qua 9/9 bởi hội đồng 3 bên (Codex / Antigravity / ZCode), 2026-11-01. Council record: [`docs/HOI_DONG_9_KET_QUA.md`](docs/HOI_DONG_9_KET_QUA.md), escalation log: [`docs/EXPLORATION.md`](docs/EXPLORATION.md).
 
 ## Kiến trúc (tóm tắt CONFIG v1.3)
 
@@ -16,8 +16,9 @@
 | Giai đoạn | Trạng thái | Ghi chú |
 |---|---|---|
 | CONFIG v1.3 (hội đồng 9/9) | ✅ 2026-11-01 | `docs/CONFIG_V1_3.md` |
+| CONFIG v1.4 amendment (§D: CRF primary — CQP làm quantOffsets vô hiệu, council-verified) | ✅ 2026-11-01 (9/9) | `docs/CONFIG_V1_4.md` |
 | Repo skeleton + Student + tests | ✅ Implemented; validation limited by local dependencies | §A–F, H.2; see validation notes below |
-| GATE 0 codec spike (x265 quantOffsets) | ⏸ Harness implemented; local run SKIP | Pinned libx265/shim and residual-QP trace unavailable; training locked |
+| GATE 0 codec spike (x265 quantOffsets) | 🔄 **Kernel FULL đang chạy trên Kaggle** (CRF discriminator đã chứng minh cơ chế ở quick v6: 202,791/202,791 CU ΔQP>0, bits −25.11%) | §E-F0 + E-F0-CRF criteria; log sẽ về `logs/kaggle/` |
 | Frozen split SHA ledger | ⏸ Guard implemented; real data pending | No fabricated hashes; val2017 remains sealed |
 | Tầng 1a pilot (COCO500 + K400-100, Kaggle pool) | ⏳ | §F |
 | Tầng 1b (COCO5k + MOT17 đủ 7 chuỗi) | ⏳ | sau Gate 1a |
@@ -36,7 +37,7 @@ codec tests skip when their dependencies are absent.
 | Student / proxy / losses | `prism/models/`, `prism/losses/` |
 | Causal control contract | `prism/control/contract.py` |
 | Header-matched x265 C API / VTM stub | `prism/codec/`, [native build notes](prism/codec/native/README.md) |
-| Ten-frame CQP GATE 0 | `scripts/spike_gate0.py`, `tests/test_qp_map_effect.py` |
+| Ten-frame GATE 0 (CRF per CONFIG v1.4) | `scripts/spike_gate0.py`, `tests/test_qp_map_effect.py` |
 | Oracle / calibration / encode accounting | `prism/training/` |
 | Frozen split ledger / NPZ and LMDB cache | `prism/data/`, `scripts/cache_teacher_targets.py` |
 | Raw PCHIP / cluster bootstrap / Holm | `prism/evaluation/` |
