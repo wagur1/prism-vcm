@@ -40,6 +40,17 @@ class Gate0ControllerTests(unittest.TestCase):
         self.codec = self.spike.CodecBuild(self.output / "shim.so", self.output / "libx265.so", self.pin)
 
     def exercise(self, *, quick=True, encoder_error=False, decoder_error=False, identity_error=False):
+        # Council esc#4: run_spike now requires >=60 valid residual CUs per frame
+        # before the spatial-effect verification, so the stub trace must be dense.
+        def dense_trace():
+            return {(f, (i % 30) * 16, (i // 30) * 16): 32.0
+                    for f in range(10) for i in range(60)}
+        # numpy is stubbed in the loaded controller; content hashing is numeric work.
+        self.np_stub_fixed = patch.object(self.spike, "synthetic_content_sha256",
+                                          return_value="0" * 64)
+        self.np_stub_fixed.start()
+        self.addCleanup(self.np_stub_fixed.stop)
+
         def encode(prefix, name, *unused):
             if encoder_error:
                 raise RuntimeError("test encode error")
@@ -48,7 +59,7 @@ class Gate0ControllerTests(unittest.TestCase):
         with patch.object(self.spike, "offset_maps", return_value={name: None for name in (
                 "zero", "plus6", "minus6", "checkerboard")}), \
                 patch.object(self.spike, "encode_condition", side_effect=encode) as encodes, \
-                patch.object(self.spike, "residual_trace", return_value={}), \
+                patch.object(self.spike, "residual_trace", side_effect=lambda *a, **k: dense_trace()), \
                 patch.object(self.spike, "verify_spatial_effect", return_value={"1": 6}), \
                 patch.object(self.spike.subprocess, "run", side_effect=(
                     subprocess.CalledProcessError(9, ["decoder"]) if decoder_error else None)) as decodes, \

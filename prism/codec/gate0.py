@@ -18,7 +18,8 @@ def frame_bits(csv_path: Path, expected: int = 10) -> list[int]:
     return bits
 
 
-def residual_trace(path: Path, width: int, height: int) -> dict[tuple[int, int, int], float]:
+def residual_trace(path: Path, width: int, height: int,
+                   stats_out: dict[str, dict[str, int]] | None = None) -> dict[tuple[int, int, int], float]:
     """Read x265_prism_residual_v1: frame,x,y,qp,has_residual,skip (pixel coordinates)."""
     valid: dict[tuple[int, int, int], float] = {}
     seen: set[tuple[int, int, int]] = set()
@@ -26,8 +27,17 @@ def residual_trace(path: Path, width: int, height: int) -> dict[tuple[int, int, 
         reader = csv.DictReader(stream)
         if reader.fieldnames != ["frame", "x", "y", "qp", "has_residual", "skip"]:
             raise ValueError("Expected x265_prism_residual_v1 CSV header")
+        if stats_out is not None:
+            stats_out.clear()
         for row in reader:
             frame, x, y = (int(row[key]) for key in ("frame", "x", "y"))
+            if stats_out is not None:
+                entry = stats_out.setdefault(str(frame), {"rows": 0, "residual": 0, "skip": 0})
+                entry["rows"] += 1
+                if row["has_residual"] == "1":
+                    entry["residual"] += 1
+                if row["skip"] == "1":
+                    entry["skip"] += 1
             key = (frame, x, y)
             if key in seen:
                 raise ValueError("Duplicate CU trace coordinates; candidates/stale traces are not evidence")
@@ -49,25 +59,51 @@ def residual_trace(path: Path, width: int, height: int) -> dict[tuple[int, int, 
 
 def verify_spatial_effect(anchor: dict[tuple[int, int, int], float],
                           changed: dict[tuple[int, int, int], float],
-                          offsets: np.ndarray) -> dict[str, float]:
-    """Require the realized residual QP direction in each requested sign region."""
-    samples: dict[int, list[float]] = {-1: [], 1: []}
-    per_frame: dict[tuple[int, int], list[float]] = {}
-    for key in anchor.keys() & changed.keys():
-        frame, x, y = key
-        sign = int(np.sign(offsets[y // 16, x // 16]))
-        if sign:
+                          offsets: np.ndarray, *,
+                          min_pairs: int = 32, min_qg: int = 8,
+                          min_aggregate_median: float = 4.0) -> dict:
+    """Council esc#4 (20261101_034554): two-tier spatial-effect gate.
+
+    Tier 1 (per frame x sign): >= min_pairs shared residual CUs spread over
+    >= min_qg QG16 cells, median signed QP change > 0. Tier 2 (aggregate):
+    median signed QP change >= min_aggregate_median. Frames without enough
+    evidence FAIL loudly (no silent skipping); per-frame statistics returned.
+    """
+    signs = sorted({int(np.sign(v)) for row in offsets for v in row if int(np.sign(v))})
+    if not signs:
+        raise ValueError("Offset map has no signed regions")
+    shared = anchor.keys() & changed.keys()
+    result: dict = {"per_frame": {}, "frames_checked": sorted({key[0] for key in anchor})}
+    for sign in signs:
+        samples: list[float] = []
+        per_frame: dict[int, list[tuple[float, int, int]]] = {}
+        for key in shared:
+            frame, x, y = key
+            if int(np.sign(offsets[y // 16, x // 16])) != sign:
+                continue
             delta = sign * (changed[key] - anchor[key])
-            samples[sign].append(delta)
-            per_frame.setdefault((frame, sign), []).append(delta)
-    result: dict[str, float] = {}
-    for sign in (-1, 1):
-        if np.any(np.sign(offsets) == sign):
-            for frame in {key[0] for key in anchor}:
-                evidence = per_frame.get((frame, sign), [])
-                if not evidence or np.median(evidence) <= 0:
-                    raise ValueError(f"No realized QP effect in frame {frame}, sign {sign}")
-            if not samples[sign] or np.median(samples[sign]) <= 0:
-                raise ValueError(f"No positive realized QP effect for offset sign {sign}")
-            result[str(sign)] = float(np.median(samples[sign]))
+            samples.append(delta)
+            per_frame.setdefault(frame, []).append((delta, x // 16, y // 16))
+        if not samples:
+            raise ValueError(f"No shared residual CUs for offset sign {sign}")
+        for frame in sorted(result["frames_checked"]):
+            entries = per_frame.get(frame, [])
+            qg_spread = {(qx, qy) for _, qx, qy in entries}
+            if len(entries) < min_pairs or len(qg_spread) < min_qg:
+                raise ValueError(
+                    f"Insufficient residual pairs frame {frame} sign {sign}: "
+                    f"pairs={len(entries)} (<{min_pairs}) qg_spread={len(qg_spread)} (<{min_qg})")
+            median = float(np.median([d for d, _, _ in entries]))
+            if median <= 0:
+                raise ValueError(
+                    f"No positive realized QP effect in frame {frame}, sign {sign} "
+                    f"(median={median:.3f})")
+            result["per_frame"][f"{frame}:{sign}"] = {
+                "pairs": len(entries), "qg_spread": len(qg_spread), "median": median}
+        aggregate = float(np.median(samples))
+        if aggregate < min_aggregate_median:
+            raise ValueError(
+                f"Aggregate realized QP effect too weak for sign {sign}: "
+                f"median={aggregate:.3f} < {min_aggregate_median}")
+        result[str(sign)] = aggregate
     return result

@@ -126,3 +126,7 @@ repositories must remain nonzero build failures and a SKIP report.
 
 - v1 patch used `ctu->m_depth[part]`; x265 3.5 member is `m_cuDepth[part]` (C++ compile error in frameencoder.cpp, caught by GATE 0 quick v1 on Kaggle). Fixed per council verdict 20261101_021216 (CX-1/CX-3/ZC-2/ZC-3).
 - NASM on Kaggle is 2.16.01 (sufficient); asm messages in v1 log were warnings, not errors. Assembly stays ON by default; ENABLE_ASSEMBLY=OFF only as recorded fallback (identical flags stock+patched; F0-scope only, never F1 latency evidence).
+
+## Content provenance (council esc#4, 20261101_034554)
+
+- `synthetic_frames` regenerates independent per-frame seeded noise (SeedSequence(0).spawn(10), PCG64). `synthetic_content_sha256` is recorded in gate0.json; any rerun whose hash differs must FAIL. The zero-map run in quick v4 remains valid evidence of skip-dominant behavior, not of map effect.

@@ -11,9 +11,23 @@ from prism.codec.gate0 import residual_trace, verify_spatial_effect
 def test_average_qp_cannot_substitute_spatial_evidence():
     anchor = {(0, 0, 0): 32., (0, 16, 0): 32.}
     changed = {(0, 0, 0): 38., (0, 16, 0): 26.}
-    verify_spatial_effect(anchor, changed, np.array([[6., -6.]]))
+    verify_spatial_effect(anchor, changed, np.array([[6., -6.]]),
+                          min_pairs=1, min_qg=1, min_aggregate_median=4.0)
     with pytest.raises(ValueError):
-        verify_spatial_effect(anchor, changed, np.array([[-6., 6.]]))
+        verify_spatial_effect(anchor, changed, np.array([[-6., 6.]]),
+                              min_pairs=1, min_qg=1, min_aggregate_median=4.0)
+
+
+def test_min_count_guard_fails_loudly():
+    anchor = {(0, 0, 0): 32., (0, 16, 0): 32.}
+    changed = {(0, 0, 0): 38., (0, 16, 0): 38.}
+    with pytest.raises(ValueError, match="Insufficient residual pairs"):
+        verify_spatial_effect(anchor, changed, np.array([[6.]]))
+    many = {(0, x // 16 * 16, 0): 32. for x in range(0, 16 * 40, 16)}
+    changed_many = {(0, x // 16 * 16, 0): 38. for x in range(0, 16 * 40, 16)}
+    with pytest.raises(ValueError, match="too weak"):
+        verify_spatial_effect(many, changed_many, np.array([[6.]]),
+                              min_pairs=1, min_qg=1, min_aggregate_median=4.0)
 
 
 def test_trace_excludes_skip_and_padding(tmp_path):

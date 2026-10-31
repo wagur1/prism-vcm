@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import csv
 from dataclasses import asdict, dataclass
 import json
@@ -30,10 +31,23 @@ class CodecBuild:
 
 
 def synthetic_frames(width: int, height: int) -> list[bytes]:
-    rng = np.random.default_rng(0)
-    texture = rng.integers(16, 236, (height, width), dtype=np.uint8)
+    """Council esc#4: independent seeded noise per frame so every P-frame carries
+    residual CUs (the rolled single-texture design made P-frames skip-dominant)."""
+    seeds = np.random.SeedSequence(0).spawn(10)
     chroma = bytes([128]) * (width * height // 2)
-    return [np.roll(texture, shift=index * 2, axis=1).tobytes() + chroma for index in range(10)]
+    return [
+        np.random.Generator(np.random.PCG64(seed)).integers(
+            16, 236, size=(height, width), dtype=np.uint8
+        ).tobytes() + chroma
+        for seed in seeds
+    ]
+
+
+def synthetic_content_sha256(width: int, height: int) -> str:
+    digest = hashlib.sha256()
+    for frame in synthetic_frames(width, height):
+        digest.update(frame)
+    return digest.hexdigest()
 
 
 def offset_maps(width: int, height: int) -> dict[str, np.ndarray]:
@@ -133,7 +147,17 @@ def run_spike(output: Path, library: CodecBuild | X265Library, ffmpeg: str,
                                        stdout=log, stderr=subprocess.STDOUT)
                     bits = frame_bits(prefix.with_suffix(".csv"))
                     if name in maps:
-                        traces[name] = residual_trace(prefix.with_suffix(".trace.csv"), width, height)
+                        coverage: dict[str, dict[str, int]] = {}
+                        traces[name] = residual_trace(prefix.with_suffix(".trace.csv"), width, height,
+                                                      stats_out=coverage)
+                        report.setdefault("frame_coverage", {})[name] = coverage
+                        valid_per_frame: dict[int, int] = {}
+                        for key in traces[name]:
+                            valid_per_frame[key[0]] = valid_per_frame.get(key[0], 0) + 1
+                        thin = {f: n for f, n in sorted(valid_per_frame.items()) if n < 60}
+                        if thin:
+                            raise ValueError(
+                                f"Per-frame residual-block count below N=60 threshold: {thin}")
                     report["runs"].append({"qp": qp, "gop": gop, "map": name,
                         "whole_bitstream_bytes": len(streams[name]), "per_frame_bits": bits})
                 if not quick:
@@ -146,6 +170,9 @@ def run_spike(output: Path, library: CodecBuild | X265Library, ffmpeg: str,
                     report.setdefault("spatial_evidence", []).append({"qp": qp, "gop": gop,
                         "map": name, "signed_median_qp_change": evidence,
                         "bit_change_percent": 100 * (len(streams[name]) / len(streams["zero"]) - 1)})
+        report["synthetic_content_sha256"] = synthetic_content_sha256(width, height)
+        report["synthetic_generator"] = {"seed_root": 0, "numpy": getattr(np, "__version__", "unknown"),
+                                         "frames": 10, "independent_per_frame": True}
         report["status"] = "SMOKE_PASS" if quick else "PASS"
         report["gate0_complete"] = not quick
     except Exception as exc:
