@@ -79,7 +79,19 @@ checkout_tag() {
     local url=$1 tag=$2 dest=$3
     if [[ ! -d "$dest/.git" ]]; then
         [[ ! -e "$dest" ]] || die "Refusing non-git source directory: $dest"
-        git -c credential.helper= clone --depth 1 --branch "$tag" --single-branch "$url" "$dest"
+        local attempt
+        for attempt in 1 2 3; do
+            if git -c credential.helper= clone --depth 1 --branch "$tag" --single-branch "$url" "$dest"; then
+                break
+            fi
+            rm -rf -- "$dest"
+            if (( attempt == 3 )); then
+                die "git clone $url (tag $tag) failed after 3 attempts (upstream/network)"
+            fi
+            printf 'clone attempt %s failed; retrying in 20s
+' "$attempt"
+            sleep 20
+        done
     fi
     local expected actual
     expected=$(git -C "$dest" rev-parse "refs/tags/$tag^{commit}")
