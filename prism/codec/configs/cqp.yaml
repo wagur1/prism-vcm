@@ -1,0 +1,14 @@
+mode: CQP
+primary: true
+qp: [27, 32, 37, 42, 47]
+requires_gate0: true
+preset: medium
+aq_mode: 1
+cutree: false
+sao: true
+qg_size: 16
+gop: 32
+bframes: 3
+zero_sum: false
+pixel_format: yuv420p
+bit_depth: 8

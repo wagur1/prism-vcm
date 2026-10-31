@@ -1,0 +1,7 @@
+{
+  "entries": [],
+  "frozen_sha256": null,
+  "protocol_frozen": false,
+  "pilot_passed": false,
+  "note": "Populate real train2017 source SHA256s locally; empty templates cannot unlock training."
+}

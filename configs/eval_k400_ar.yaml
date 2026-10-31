@@ -1,0 +1,13 @@
+spec: CONFIG_V1_3
+task: action_recognition
+model: R3D-18
+dataset: K400
+pilot_clips: 100
+full_phase: 2
+sampling: contiguous_blocks
+split_unit: sequence
+codec_config: prism/codec/configs/cqp.yaml
+baselines: [M1, M2, M3, M4]
+transfer: {pass_max_percent: 2, fail_strict_min_percent: 5, intermediate: inconclusive}
+statistics: {unit: sequence, resamples: 1000, independent_seeds: 3, correction: Holm-Bonferroni}
+bd: {interpolator: PCHIP, log_rate: true, overlap_min: 0.70, extrapolate: false, raw_only: true}

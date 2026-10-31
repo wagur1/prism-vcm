@@ -1,0 +1,13 @@
+spec: CONFIG_V1_3
+task: tracking
+phase: 1b
+requires: [pilot_pass, protocol_freeze]
+dataset: MOT17
+validation_sequences: 7
+sampling: contiguous_blocks
+split_unit: sequence
+codec_config: prism/codec/configs/cqp.yaml
+baselines: [M1, M2, M3, M4]
+statistics: {unit: sequence, resamples: 1000, independent_seeds: 3, correction: Holm-Bonferroni}
+bd: {interpolator: PCHIP, log_rate: true, overlap_min: 0.70, extrapolate: false, raw_only: true}
+per_task_floor: null  # Freeze before the sealed test.

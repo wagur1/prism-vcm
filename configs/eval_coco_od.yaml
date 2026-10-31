@@ -1,0 +1,13 @@
+spec: CONFIG_V1_3
+task: object_detection
+detectors: [YOLOv11-L, Faster R-CNN]
+pilot: {source: train2017, images: 500, split: pilot}
+full: {source: val2017, images: 5000, sealed: true, requires: [protocol_freeze, pilot_pass]}
+codec_config: prism/codec/configs/cqp.yaml
+baselines: [M1, M2, M3, M4]
+bd: {interpolator: PCHIP, log_rate: true, overlap_min: 0.70, extrapolate: false, raw_only: true}
+statistics: {unit: image, resamples: 1000, independent_seeds: 3, correction: Holm-Bonferroni}
+holm_family: M4-vs-{M2,M3} x [27,32,37,42,47]
+h1: {bd_max_percent: -3.0, ci95_upper_lt: 0, per_task_floor: null}
+h2: {savings_min_inclusive: 1.0, savings_max_exclusive: 2.9, ap_small_delta_min_pp: 0.5}
+arps: {micro_text_qr_images: 50, tiny_object_images: 50, tiny_size_px_strict_max: 16, map_degradation_max_pp: 1.0}

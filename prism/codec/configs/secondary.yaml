@@ -1,0 +1,12 @@
+primary: false
+modes: [CRF, ABR, VBV]
+report_separately: true
+preset: medium
+aq_mode: 1
+cutree: false
+sao: true
+qg_size: 16
+gop: 32
+bframes: 3
+zero_sum_ablation_modes: [ABR, VBV]
+measure_actual_rate_and_vbv_buffer: true

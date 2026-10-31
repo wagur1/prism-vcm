@@ -1,0 +1,19 @@
+hardware: T4
+backend: TensorRT
+precision: FP16
+batch: 1
+input: YUV420p8_1080p
+student_size: [256, 256]
+warmup: 200
+repetitions: 3
+samples_per_repetition: 10000
+cuda_synchronized_wall_clock: true
+includes: [host_yuv, copies, resize, forward, flow, warp, clamp, pack, D2H, allocations]
+ends_at: YUV_and_quantOffsets_ready_for_C_API
+# TODO [CẦN XÁC MINH]: preregister executable gate from measured T4 pilot.
+provisional: true
+budget_ms: {p50: 5.0, p99: 10.0}
+target_ms: {p50: 3.5, p99: 6.0}
+stretch_ms: {p50: 3.0, p99: 4.5}
+report_separately: [P100, encode, lookahead, FPS]
+record: [backend, driver]

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prism-vcm"
+version = "0.1.0"
+description = "CONFIG v1.3 research skeleton for PRISM-VCM"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "scipy>=1.10", "PyYAML>=6"]
+
+[project.optional-dependencies]
+model = ["torch>=2.2", "torchvision>=0.17", "timm>=1.0.9"]
+cache = ["lmdb>=1.4", "Pillow>=10"]
+test = ["pytest>=7.4"]
+
+[tool.setuptools.packages.find]
+include = ["prism*", "baselines*"]
+
+[tool.setuptools.package-data]
+"prism.codec" = ["configs/*.yaml", "native/*.c", "native/*.txt", "native/*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+  "integration: requires local codec builds and independent decoders",
+  "provisional: hardware design budget, not a measured claim",
+  "smoke: CPU ST-01/ST-10 smoke contract",
+]

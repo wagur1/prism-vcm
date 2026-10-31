@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.18)
+project(prism_x265 C)
+find_path(X265_INCLUDE_DIR x265.h REQUIRED)
+find_library(X265_LIBRARY NAMES x265 libx265 REQUIRED)
+add_library(prism_x265 SHARED x265_shim.c)
+target_include_directories(prism_x265 PRIVATE ${X265_INCLUDE_DIR})
+target_link_libraries(prism_x265 PRIVATE ${X265_LIBRARY})
+set_property(TARGET prism_x265 PROPERTY C_STANDARD 99)

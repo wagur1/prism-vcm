@@ -1,0 +1,58 @@
+spec: CONFIG_V1_3
+training_enabled: false
+prerequisites: [gate0_pass_on_pinned_build, frozen_source_sha_ledger]
+student:
+  backbone: mobilenetv4_conv_small
+  input_size: [256, 256]
+  qp_normalization: 51
+  conditioning_hidden: 64
+  delta_qp_grid: [17, 30]
+  qg_grid: [68, 120]
+  padded_size: [1088, 1920]
+  delta_qp_bound: 6.0
+  residual_head_bound: 8.0
+teachers:
+  names: [DINOv2-Base, SAM 2.1-Base]
+  input_size: [518, 518]
+  roi_align: true
+oracle:
+  candidates: 8
+  candidate_range: [8, 16]
+  distortion: null  # Freeze a task-specific D before any encode.
+  lambda_rate: null
+  rate_reference: null
+  split: train
+  refresh_on_delta_x_change: true
+loss:
+  lambda_semantic: 1.0
+  lambda_align: 1.0
+  lambda_rate: 0.01
+  lambda_bound: 0.1
+  huber_delta: 1.0
+calibration:
+  interval_steps: 1000
+  mape_max: 0.05
+  spearman_min: 0.8
+  min_samples_per_cell: 100
+  fisher_z_ci: 0.95
+  direction_mean_ci95_upper_lt: 0
+  consecutive_failures_to_restore: 2
+  delta_x_until_verified: 0
+control:
+  smoothing_alpha: 0.7
+  motion_lag_frames: 1
+  breaker_luma_size: [36, 64]
+  breaker_design_budget_ms: 0.3
+  velocity_threshold_px_1080p: 15
+  hold_frames: 3
+  reference_or_unknown_dx_bound: 3
+  non_reference_b_dx_bound: 8
+  background_max_delta_qp: 4
+  zero_sum_ablation: false
+  zero_sum_modes: [ABR, VBV]
+budget:
+  gpu_hours: 60
+  job_hours_max: 6
+  working_gb_strict_max: 16
+  measured_intra_images: 200
+seeds: [17, 43, 89]  # Separate initialization/training runs, not repeated evaluation draws.
