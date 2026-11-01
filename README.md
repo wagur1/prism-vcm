@@ -18,7 +18,7 @@
 | CONFIG v1.3 (hội đồng 9/9) | ✅ 2026-11-01 | `docs/CONFIG_V1_3.md` |
 | CONFIG v1.4 amendment (§D: CRF primary — CQP làm quantOffsets vô hiệu, council-verified) | ✅ 2026-11-01 (9/9) | `docs/CONFIG_V1_4.md` |
 | Repo skeleton + Student + tests | ✅ Implemented; validation limited by local dependencies | §A–F, H.2; see validation notes below |
-| GATE 0 codec spike (x265 quantOffsets) | 🔄 **Kernel FULL đang chạy trên Kaggle** (CRF discriminator đã chứng minh cơ chế ở quick v6: 202,791/202,791 CU ΔQP>0, bits −25.11%) | §E-F0 + E-F0-CRF criteria; log sẽ về `logs/kaggle/` |
+| GATE 0 codec spike (x265 quantOffsets) | ⚠️ **STRUCTURAL FAIL theo frozen criteria** (confirmatory 2026-11-01: cơ chế ĐÃ CHỨNG MINH — 100% sign-fidelity; trượt band minus6@gop10 do CRF-compensation depth phụ thuộc GOP) — chờ chủ dự án duyệt workstream deep telemetry để recalibrate + re-freeze | `logs/kaggle/gate0/` + `escalations/` |
 | Frozen split SHA ledger | ⏸ Guard implemented; real data pending | No fabricated hashes; val2017 remains sealed |
 | Tầng 1a pilot (COCO500 + K400-100, Kaggle pool) | ⏳ | §F |
 | Tầng 1b (COCO5k + MOT17 đủ 7 chuỗi) | ⏳ | sau Gate 1a |

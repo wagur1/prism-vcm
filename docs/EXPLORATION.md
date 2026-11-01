@@ -21,3 +21,8 @@ Ghi nhận trung thực các kết quả âm — mỗi mục là một bài họ
 ## Trạng thái hiện tại
 - GATE 0 mechanism: **CHỨNG MINH được dưới CRF** (quick v6: 202,791/202,791 CU ΔQP>0; I-frame ΔQP = 6.00 chính xác; bits −22.2%; zero-map vẫn byte-identical với stock).
 - Còn lại: verifier tier-2 threshold (esc#6) + biểu quyết CONFIG §D (9/9) → kernel FULL.
+
+## E-04: CRF compensation depth phụ thuộc GOP — frozen band không transfer (2026-11-01)
+- Confirmatory run (frozen criteria e6d6516a): minus6@gop1 compensated median = 4.0 (PASS); minus6@gop10 frame-3 = 3.0 (FAIL floor 3.5). Cơ chế đúng (sign-fidelity 100%); độ sâu bù thay đổi theo cấu trúc GOP/feedback history.
+- **Bài học:** band hiệu chuẩn từ MỘT cấu hình GOP không transfer được sang cấu hình khác — đúng cảnh báo transferability của ZC-2 (esc#9). Deep telemetry (per-POC base QP) là con đường duy nhất để band bất biến theo cấu hình.
+- Kết quả FINAL theo hard-stop esc#9 — escalated to owner.
