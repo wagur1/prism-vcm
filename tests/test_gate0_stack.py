@@ -39,7 +39,8 @@ class Gate0ControllerTests(unittest.TestCase):
         self.pin = self.spike.BuildPin("a" * 64, "b" * 64, "test-only", 199, 123)
         self.codec = self.spike.CodecBuild(self.output / "shim.so", self.output / "libx265.so", self.pin)
 
-    def exercise(self, *, quick=True, encoder_error=False, decoder_error=False, identity_error=False):
+    def exercise(self, *, quick=True, encoder_error=False, decoder_error=False, identity_error=False,
+                 criteria_status="RATIFIED", qg_error=None):
         # Council esc#4: run_spike now requires >=60 valid residual CUs per frame
         # before the spatial-effect verification, so the stub trace must be dense.
         def dense_trace():
@@ -56,6 +57,8 @@ class Gate0ControllerTests(unittest.TestCase):
                 raise RuntimeError("test encode error")
             prefix.with_suffix(".hevc").write_bytes(b"different" if identity_error and name == "stock" else b"test")
             prefix.with_suffix(".csv").write_text("Bits\n" + "8\n" * 10)
+            if name in ("zero", "plus6", "minus6", "checkerboard"):
+                prefix.with_suffix(".telemetry.csv").write_text("mocked numeric evidence")
         # Numeric evaluation is mocked; these invariants need no NumPy runtime.
         def fake_map(values):
             return SimpleNamespace(max=lambda: max(values), min=lambda: min(values),
@@ -66,11 +69,19 @@ class Gate0ControllerTests(unittest.TestCase):
                 patch.object(self.spike, "encode_condition", side_effect=encode) as encodes, \
                 patch.object(self.spike, "residual_trace", side_effect=lambda *a, **k: dense_trace()), \
                 patch.object(self.spike, "verify_spatial_effect", return_value={"1": 6}), \
+                patch.object(self.spike, "verify_net_effect", return_value={"1": 6}) as net, \
+                patch.object(self.spike, "verify_net_effect_qg", return_value={"1": 6}, side_effect=qg_error) as qg, \
                 patch.object(self.spike.subprocess, "run", side_effect=(
                     subprocess.CalledProcessError(9, ["decoder"]) if decoder_error else None)) as decodes, \
                 redirect_stdout(io.StringIO()):
             report = self.spike.run_spike(self.output, self.codec, "ffmpeg", ["HM", "-b", "{bitstream}"],
-                                         stock=self.codec, quick=quick)
+                stock=self.codec, quick=quick, qg_criteria={
+                    "status": criteria_status, "metric": "net-effect-qg16",
+                    "aggregate_floor_magnitude": 4.9,
+                    "bands_magnitude": {"checkerboard": {
+                        "first_frame": {"-1": [5.5, 6.5], "1": [5.5, 6.5]},
+                        "compensated": {"-1": [4.9, 7.2], "1": [4.9, 7.2]}, "fidelity": .98}}})
+        self.net_calls, self.qg_calls = net.call_args_list, qg.call_args_list
         return report, encodes, decodes
 
     def test_quick_is_exactly_two_sequences_and_cannot_pass_gate(self):
@@ -88,6 +99,33 @@ class Gate0ControllerTests(unittest.TestCase):
         self.assertEqual((report["encodes"], report["encoded_frames"]), (60, 600))
         self.assertEqual(encodes.call_count, 60)
         self.assertEqual(decodes.call_count, 120)
+
+    def test_verification_paths_follow_each_condition_and_checkerboard_uses_qg(self):
+        report, _, _ = self.exercise(quick=False)
+        self.assertEqual(report["status"], "PASS")
+        self.assertEqual(len(self.net_calls), 20)
+        self.assertEqual(len(self.qg_calls), 10)
+        expected = []
+        for qp in (27, 32, 37, 42, 47):
+            for gop in (1, 10):
+                for condition in ("plus6", "minus6"):
+                    expected.append((f"qp{qp}_gop{gop}_zero.telemetry.csv",
+                                     f"qp{qp}_gop{gop}_{condition}.telemetry.csv"))
+        self.assertEqual([(c.args[0].name, c.args[1].name) for c in self.net_calls], expected)
+        for call in self.qg_calls:
+            self.assertTrue(call.args[1].name.endswith("_checkerboard.telemetry.csv"))
+            self.assertEqual(call.args[0].name, call.args[1].name.replace("_checkerboard.", "_zero."))
+
+    def test_proposal_cannot_gate_or_start_a_full_encode(self):
+        report, encodes, _ = self.exercise(quick=False, criteria_status="PROPOSAL")
+        self.assertEqual(report["status"], "FAIL")
+        self.assertIn("RATIFIED", report["reason"])
+        self.assertEqual(encodes.call_count, 0)
+
+    def test_insufficient_qg_coverage_is_invalid_without_a_gate_verdict(self):
+        report, _, _ = self.exercise(quick=False, qg_error=self.spike.QGInvalidEvidence("insufficient active coverage"))
+        self.assertEqual(report["status"], "INVALID")
+        self.assertFalse(report["gate0_complete"])
 
     def test_failures_never_become_smoke_success(self):
         report, _, _ = self.exercise(encoder_error=True)

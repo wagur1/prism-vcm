@@ -1,0 +1,1905 @@
+{
+  "schema": "gate0-offline-confirmatory-final",
+  "criteria": "gate0-criteria-frozen-v3-20261101-esc11",
+  "evidence": "C:\\Users\\Wagur1\\Desktop\\HOI_DONG_9\\kernels\\gate0_out\\20261101_165719\\gate0_output\\runs\\20261101T090829Z-54126242\\evidence",
+  "conditions": [
+    {
+      "condition": "plus6",
+      "gop": 1,
+      "status": "PASS",
+      "evidence": {
+        "metric": "net-effect-qg16",
+        "per_frame": {
+          "0:1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "first_frame",
+            "kind": "I"
+          },
+          "1:1": {
+            "count": 8160,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 5.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "2:1": {
+            "count": 8160,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 5.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "3:1": {
+            "count": 8160,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 5.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "4:1": {
+            "count": 8160,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 5.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "5:1": {
+            "count": 8160,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 5.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "6:1": {
+            "count": 8160,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 5.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "7:1": {
+            "count": 8160,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 5.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "8:1": {
+            "count": 8160,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 5.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "9:1": {
+            "count": 8160,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 5.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          }
+        },
+        "aggregate": {
+          "1": {
+            "count": 81600,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0
+          }
+        },
+        "frame_classes": {
+          "first_frame:1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0
+          },
+          "compensated:1": {
+            "count": 73440,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 5.0,
+            "fidelity": 1.0
+          }
+        },
+        "cell_active_coverage_threshold": 1.0,
+        "minimum_joint_coverage": 0.8,
+        "1": 5.0
+      }
+    },
+    {
+      "condition": "plus6",
+      "gop": 10,
+      "status": "PASS",
+      "evidence": {
+        "metric": "net-effect-qg16",
+        "per_frame": {
+          "0:1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "first_frame",
+            "kind": "I"
+          },
+          "1:1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "2:1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "3:1": {
+            "count": 8160,
+            "median": 7.0,
+            "median_abs": 7.0,
+            "p10": 7.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "4:1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "5:1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "6:1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "7:1": {
+            "count": 8160,
+            "median": 7.0,
+            "median_abs": 7.0,
+            "p10": 7.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "8:1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "9:1": {
+            "count": 8160,
+            "median": 7.0,
+            "median_abs": 7.0,
+            "p10": 7.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          }
+        },
+        "aggregate": {
+          "1": {
+            "count": 81600,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0
+          }
+        },
+        "frame_classes": {
+          "first_frame:1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0
+          },
+          "compensated:1": {
+            "count": 73440,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0
+          }
+        },
+        "cell_active_coverage_threshold": 1.0,
+        "minimum_joint_coverage": 0.8,
+        "1": 6.0
+      }
+    },
+    {
+      "condition": "minus6",
+      "gop": 1,
+      "status": "PASS",
+      "evidence": {
+        "metric": "net-effect-qg16",
+        "per_frame": {
+          "0:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "first_frame",
+            "kind": "I"
+          },
+          "1:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "2:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "3:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "4:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "5:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "6:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "7:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "8:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "9:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          }
+        },
+        "aggregate": {
+          "-1": {
+            "count": 81600,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0
+          }
+        },
+        "frame_classes": {
+          "first_frame:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0
+          },
+          "compensated:-1": {
+            "count": 73440,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0
+          }
+        },
+        "cell_active_coverage_threshold": 1.0,
+        "minimum_joint_coverage": 0.8,
+        "-1": 6.0
+      }
+    },
+    {
+      "condition": "minus6",
+      "gop": 10,
+      "status": "PASS",
+      "evidence": {
+        "metric": "net-effect-qg16",
+        "per_frame": {
+          "0:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "first_frame",
+            "kind": "I"
+          },
+          "1:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "2:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "3:-1": {
+            "count": 8160,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 5.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "4:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "5:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "6:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "7:-1": {
+            "count": 8160,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 5.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "8:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "9:-1": {
+            "count": 8160,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 5.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 8160,
+              "both": 8160,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          }
+        },
+        "aggregate": {
+          "-1": {
+            "count": 81600,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0
+          }
+        },
+        "frame_classes": {
+          "first_frame:-1": {
+            "count": 8160,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0
+          },
+          "compensated:-1": {
+            "count": 73440,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0
+          }
+        },
+        "cell_active_coverage_threshold": 1.0,
+        "minimum_joint_coverage": 0.8,
+        "-1": 6.0
+      }
+    },
+    {
+      "condition": "checkerboard",
+      "gop": 1,
+      "status": "PASS",
+      "evidence": {
+        "metric": "net-effect-qg16",
+        "per_frame": {
+          "0:-1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "first_frame",
+            "kind": "I"
+          },
+          "0:1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "first_frame",
+            "kind": "I"
+          },
+          "1:-1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "1:1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "2:-1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "2:1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "3:-1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "3:1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "4:-1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "4:1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "5:-1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "5:1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "6:-1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "6:1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "7:-1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "7:1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "8:-1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "8:1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "9:-1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          },
+          "9:1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "I"
+          }
+        },
+        "aggregate": {
+          "-1": {
+            "count": 40800,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0
+          },
+          "1": {
+            "count": 40800,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0
+          }
+        },
+        "frame_classes": {
+          "first_frame:-1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0
+          },
+          "first_frame:1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0
+          },
+          "compensated:-1": {
+            "count": 36720,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0
+          },
+          "compensated:1": {
+            "count": 36720,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0
+          }
+        },
+        "cell_active_coverage_threshold": 1.0,
+        "minimum_joint_coverage": 0.8,
+        "-1": 6.0,
+        "1": 6.0
+      }
+    },
+    {
+      "condition": "checkerboard",
+      "gop": 10,
+      "status": "PASS",
+      "evidence": {
+        "metric": "net-effect-qg16",
+        "per_frame": {
+          "0:-1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "first_frame",
+            "kind": "I"
+          },
+          "0:1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "first_frame",
+            "kind": "I"
+          },
+          "1:-1": {
+            "count": 4080,
+            "median": 7.0,
+            "median_abs": 7.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "1:1": {
+            "count": 4080,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "2:-1": {
+            "count": 4080,
+            "median": 7.0,
+            "median_abs": 7.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "2:1": {
+            "count": 4080,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "3:-1": {
+            "count": 4080,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 5.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "3:1": {
+            "count": 4080,
+            "median": 7.0,
+            "median_abs": 7.0,
+            "p10": 7.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "4:-1": {
+            "count": 4080,
+            "median": 7.0,
+            "median_abs": 7.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "4:1": {
+            "count": 4080,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "5:-1": {
+            "count": 4080,
+            "median": 7.0,
+            "median_abs": 7.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "5:1": {
+            "count": 4080,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "6:-1": {
+            "count": 4080,
+            "median": 7.0,
+            "median_abs": 7.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "6:1": {
+            "count": 4080,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "7:-1": {
+            "count": 4080,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 5.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "7:1": {
+            "count": 4080,
+            "median": 7.0,
+            "median_abs": 7.0,
+            "p10": 7.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "8:-1": {
+            "count": 4080,
+            "median": 7.0,
+            "median_abs": 7.0,
+            "p10": 6.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "8:1": {
+            "count": 4080,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 6.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "9:-1": {
+            "count": 4080,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 5.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          },
+          "9:1": {
+            "count": 4080,
+            "median": 7.0,
+            "median_abs": 7.0,
+            "p10": 7.0,
+            "p90": 7.0,
+            "fidelity": 1.0,
+            "coverage": {
+              "visible_cells": 4080,
+              "both": 4080,
+              "zero_only": 0,
+              "condition_only": 0,
+              "neither": 0,
+              "joint_fraction": 1.0,
+              "zero_active_area_fraction": 1.0,
+              "condition_active_area_fraction": 1.0
+            },
+            "frame_class": "compensated",
+            "kind": "inter"
+          }
+        },
+        "aggregate": {
+          "-1": {
+            "count": 40800,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 7.0,
+            "fidelity": 1.0
+          },
+          "1": {
+            "count": 40800,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 7.0,
+            "fidelity": 1.0
+          }
+        },
+        "frame_classes": {
+          "first_frame:-1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0
+          },
+          "first_frame:1": {
+            "count": 4080,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 6.0,
+            "p90": 6.0,
+            "fidelity": 1.0
+          },
+          "compensated:-1": {
+            "count": 36720,
+            "median": 6.0,
+            "median_abs": 6.0,
+            "p10": 5.0,
+            "p90": 7.0,
+            "fidelity": 1.0
+          },
+          "compensated:1": {
+            "count": 36720,
+            "median": 5.0,
+            "median_abs": 5.0,
+            "p10": 5.0,
+            "p90": 7.0,
+            "fidelity": 1.0
+          }
+        },
+        "cell_active_coverage_threshold": 1.0,
+        "minimum_joint_coverage": 0.8,
+        "-1": 6.0,
+        "1": 6.0
+      }
+    }
+  ],
+  "status": "PASS",
+  "gate0_complete": true
+}

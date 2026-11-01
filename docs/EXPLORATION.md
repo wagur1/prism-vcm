@@ -35,3 +35,7 @@ Ghi nhận trung thực các kết quả âm — mỗi mục là một bài họ
 - **Coverage:** FULL mode completes missing telemetry conditions after the frozen verifier stops, preserving the original result. QUICK records telemetry but skips calibration. The analyzer rejects partial matrices and v1/v2 mismatches.
 - **Validation:** CMake/GCC native static/shared build succeeded on the cached 3.5 source; native map/GOP, B-reordering/PTS, clipping, WPP and bit-identity probes passed. See `gate0/PATCH_AUDIT.md` and `gate0/VALIDATION.md` for exact scope.
 - **Limits:** current harness QP labels share a single `GATE0_CRF` setting; they must not be presented as a CRF sweep. Full content/grid generalization, independent decoder QP reconstruction, and council ratification remain outstanding. No revised criteria or GATE 0 PASS is claimed.
+
+## GATE 0 CLOSED (2026-11-01)
+- Confirmatory #2 FAIL (minus6@gop10 raw band) → owner approved deep telemetry → per-QG16 coverage-weighted drift-cancelled verifier (esc#11, 9/9) → offline recalibration (46 tests, 100% coverage/fidelity) → council ratify v3 (AG-2 + CX-1) → frozen v3 (SHA 316134d2) → **OFFLINE CONFIRMATORY: PASS 6/6** (plus6/minus6/checkerboard × gop1/gop10).
+- Tổng kết GATE 0: 8 kernel runs, 11 escalations, 1 harness bug (stale prefix), 1 measurement-model fix (per-CU→per-QG16), 1 cơ chế phát hiện (CQP bỏ quantOffsets), 0 criterion edited outside council process.

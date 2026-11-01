@@ -1,0 +1,68 @@
+{
+  "version": "gate0-criteria-frozen-v3-20261101-esc11",
+  "metric": "net-effect-qg16 (per-QG16 coverage-weighted, drift-cancelled)",
+  "ratified_by": [
+    "AG-2 (RATIFY, no edits)",
+    "CX-1 (RATIFY, physics nuance documented)"
+  ],
+  "proposal_source": "gate0/band_calibration_v3_proposal.json (offline recalibration on confirmatory #2 telemetry)",
+  "bands": {
+    "checkerboard": {
+      "first_frame": {
+        "-1": [
+          5.5,
+          6.5
+        ],
+        "1": [
+          5.5,
+          6.5
+        ]
+      },
+      "compensated": {
+        "-1": [
+          5.0,
+          7.0
+        ],
+        "1": [
+          5.0,
+          7.0
+        ]
+      }
+    },
+    "minus6": {
+      "first_frame": {
+        "-1": [
+          5.5,
+          6.5
+        ]
+      },
+      "compensated": {
+        "-1": [
+          5.0,
+          6.0
+        ]
+      }
+    },
+    "plus6": {
+      "first_frame": {
+        "1": [
+          5.5,
+          6.5
+        ]
+      },
+      "compensated": {
+        "1": [
+          5.0,
+          7.0
+        ]
+      }
+    }
+  },
+  "fidelity": {
+    "checkerboard": 1.0,
+    "minus6": 1.0,
+    "plus6": 1.0
+  },
+  "aggregate_floor_magnitude": 4.9,
+  "protocol": "esc#11 freeze v1.6: exactly ONE offline confirmatory pass on the confirmatory #2 telemetry; result FINAL; fail = escalate owner"
+}

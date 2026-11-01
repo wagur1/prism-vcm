@@ -18,7 +18,7 @@
 | CONFIG v1.3 (hội đồng 9/9) | ✅ 2026-11-01 | `docs/CONFIG_V1_3.md` |
 | CONFIG v1.4 amendment (§D: CRF primary — CQP làm quantOffsets vô hiệu, council-verified) | ✅ 2026-11-01 (9/9) | `docs/CONFIG_V1_4.md` |
 | Repo skeleton + Student + tests | ✅ Implemented; validation limited by local dependencies | §A–F, H.2; see validation notes below |
-| GATE 0 codec spike (x265 quantOffsets) | ⚠️ **STRUCTURAL FAIL theo frozen criteria** (confirmatory 2026-11-01: cơ chế ĐÃ CHỨNG MINH — 100% sign-fidelity; trượt band minus6@gop10 do CRF-compensation depth phụ thuộc GOP) — chờ chủ dự án duyệt workstream deep telemetry để recalibrate + re-freeze | `logs/kaggle/gate0/` + `escalations/` |
+| GATE 0 codec spike (x265 quantOffsets) | ✅ **PASS 6/6** (offline confirmatory FINAL 2026-11-01, frozen criteria v3 per-QG16 drift-cancelled net-effect; deep telemetry workstream + 9-escalation council process) | `logs/kaggle/gate0/confirmatory_final/` + `gate0/criteria_frozen_v3.json` |
 | Frozen split SHA ledger | ⏸ Guard implemented; real data pending | No fabricated hashes; val2017 remains sealed |
 | Tầng 1a pilot (COCO500 + K400-100, Kaggle pool) | ⏳ | §F |
 | Tầng 1b (COCO5k + MOT17 đủ 7 chuỗi) | ⏳ | sau Gate 1a |
@@ -44,8 +44,8 @@ codec tests skip when their dependencies are absent.
 | M1–M4 / experiment matrices | `baselines/`, `configs/`, `prism/codec/configs/` |
 | CPU smoke CI | `.github/workflows/smoke.yml` |
 
-The requested model skeleton is present, but **training is locked** until GATE 0
-passes on the pinned build and real source SHA lists are frozen. This differs
+The requested model skeleton is present, but GATE 0 **PASSED** (frozen criteria v3, 6/6 conditions)
+— training unlock sequencing per CONFIG §H and real source SHA lists are frozen. This differs
 from CONFIG's literal pre-model sequencing because the task requests the full
 skeleton without local codec evidence or source data. No experiment is unlocked
 by the skeleton. The split template cannot act as a frozen ledger.

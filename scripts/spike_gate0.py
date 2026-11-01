@@ -17,7 +17,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 
 from prism.codec.gate0 import (
-    frame_bits, residual_trace, verify_net_effect, verify_spatial_effect)
+    QGInvalidEvidence, frame_bits, residual_trace, verify_net_effect,
+    verify_net_effect_qg, verify_spatial_effect)
 from prism.codec.x265_bridge import (BuildPin, EncoderConfig, X265Encoder,
                                     X265Library, X265Unavailable, qg_shape)
 
@@ -135,7 +136,8 @@ def collect_remaining_telemetry(output: Path, library: CodecBuild | X265Library,
 
 def run_spike(output: Path, library: CodecBuild | X265Library, ffmpeg: str,
               reference_command: list[str], width: int = 1920, height: int = 1080,
-              stock: CodecBuild | X265Library | None = None, quick: bool = False) -> dict:
+              stock: CodecBuild | X265Library | None = None, quick: bool = False,
+              qg_criteria: dict | None = None) -> dict:
     if (not isinstance(reference_command, list) or not reference_command
             or not all(isinstance(arg, str) for arg in reference_command)
             or not any("{bitstream}" in arg for arg in reference_command)):
@@ -156,6 +158,18 @@ def run_spike(output: Path, library: CodecBuild | X265Library, ffmpeg: str,
                     "runs": [], "rc": "CQP", "pin": asdict(library.pin),
                     "stock_pin": asdict(stock.pin) if stock else None}
     try:
+        if not quick:
+            if (qg_criteria is None or qg_criteria.get("status") != "RATIFIED"
+                    or qg_criteria.get("metric") != "net-effect-qg16"):
+                raise ValueError("Checkerboard requires council-RATIFIED QG16 v3 criteria; no proposal or legacy fallback")
+            qg_profile = qg_criteria["bands_magnitude"]["checkerboard"]
+            # Validate presence before any encoding; never substitute v1.5 bands.
+            for kind in ("first_frame", "compensated"):
+                for sign in ("-1", "1"):
+                    if sign not in qg_profile[kind]:
+                        raise ValueError(f"Missing ratified QG16 band: {kind}/{sign}")
+            qg_fidelity = qg_profile["fidelity"]
+            qg_floor = qg_criteria["aggregate_floor_magnitude"]
         for qp in ((32,) if quick else (27, 32, 37, 42, 47)):
             for gop in ((10,) if quick else (1, 10)):
                 rc_mode = os.environ.get("GATE0_RC", "CQP")
@@ -206,15 +220,10 @@ def run_spike(output: Path, library: CodecBuild | X265Library, ffmpeg: str,
                         raise ValueError("Zero-delta bit identity with stock failed")
                     if streams["same_binary_no_map"] != streams["zero"]:
                         raise ValueError("Zero-map changed the same-binary bitstream")
-                # AG-2 esc#8 (synthesized with CX-1): direction-asymmetric
-                # provisional gross-guard bands; checkerboard dual-sign rules.
-                # FROZEN criteria per council esc#9 (20261101_064330): pre-registered
-                # from accumulated data; HARD LOCKOUT - no edits without CX-1 deep
-                # telemetry. Next run is CONFIRMATORY; fail = structural result.
+                # Legacy uniform-only fallback when deep telemetry is absent.
                 band_profiles = {
                     "plus6": ({1: (2.5, 4.5)}, 1.0, None),
                     "minus6": ({-1: (3.5, 6.0)}, 1.0, None),
-                    "checkerboard": ({1: (5.0, 8.5), -1: (3.5, 6.5)}, 0.98, 0.5),
                 }
                 # CONFIG v1.5 (AG-2 ratified esc#10): NET-EFFECT criteria from
                 # deep telemetry (CX-1 drift-cancelling metric). Falls back to the
@@ -222,15 +231,23 @@ def run_spike(output: Path, library: CodecBuild | X265Library, ffmpeg: str,
                 band_profiles_v15 = {
                     "plus6": ({1: (4.9, 7.0)}, 1.0),
                     "minus6": ({-1: (4.9, 7.0)}, 1.0),
-                    "checkerboard": ({1: (4.9, 7.2), -1: (4.9, 7.2)}, 0.98),
                 }
                 i_frames_v15 = set(range(10)) if gop == 1 else {0}
                 for name in (("plus6",) if quick else ("plus6", "minus6", "checkerboard")):
+                    # esc#11: attribution is per VERIFIED condition, never the
+                    # final encode loop's stale prefix (usually checkerboard).
+                    prefix = output / f"qp{qp}_gop{gop}_{name}"
                     telemetry_path = prefix.with_suffix(".telemetry.csv")
-                    zero_telemetry_path = prefix.with_suffix(".csv").with_name(
-                        prefix.name.rsplit("_", 1)[0] + "_zero.telemetry.csv")
-                    bands_v15, min_fid = band_profiles_v15[name]
-                    if telemetry_path.is_file() and zero_telemetry_path.is_file():
+                    zero_prefix = output / f"qp{qp}_gop{gop}_zero"
+                    zero_telemetry_path = zero_prefix.with_suffix(".telemetry.csv")
+                    if name == "checkerboard":
+                        evidence = verify_net_effect_qg(
+                            zero_telemetry_path, telemetry_path, maps[name],
+                            bands={kind: qg_profile[kind] for kind in ("first_frame", "compensated")},
+                            min_fidelity=qg_fidelity, min_aggregate_median=qg_floor,
+                            i_frames=i_frames_v15, width=width, height=height)
+                    elif telemetry_path.is_file() and zero_telemetry_path.is_file():
+                        bands_v15, min_fid = band_profiles_v15[name]
                         evidence = verify_net_effect(zero_telemetry_path, telemetry_path,
                                                      maps[name], bands=bands_v15,
                                                      min_fidelity=min_fid,
@@ -254,6 +271,9 @@ def run_spike(output: Path, library: CodecBuild | X265Library, ffmpeg: str,
                                          "frames": 10, "independent_per_frame": True}
         report["status"] = "SMOKE_PASS" if quick else "PASS"
         report["gate0_complete"] = not quick
+    except QGInvalidEvidence as exc:
+        report["status"] = "INVALID"
+        report["reason"] = str(exc)
     except Exception as exc:
         report["status"] = "FAIL"
         report["reason"] = str(exc)
@@ -271,6 +291,9 @@ def read_build(shim: Path | None, library: Path | None, pin: Path | None) -> Cod
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("outputs/gate0"))
+    parser.add_argument("--qg-criteria", type=Path,
+                        default=Path(__file__).resolve().parents[1] / "gate0/criteria_frozen_v3.json",
+                        help="Council-RATIFIED QG16 bands; PROPOSAL is never accepted")
     parser.add_argument("--pin", type=Path, help="BuildPin JSON; freshly built pins still require review")
     parser.add_argument("--stock-pin", type=Path)
     parser.add_argument("--stock-shim", type=Path)
@@ -303,7 +326,9 @@ def main() -> int:
         stock = None
         if args.stock_library or args.stock_shim or args.stock_pin:
             stock = read_build(args.stock_shim, args.stock_library, args.stock_pin)
-        report = run_spike(args.output, library, args.ffmpeg, reference, stock=stock, quick=args.quick)
+        qg_criteria = json.loads(args.qg_criteria.read_text(encoding="utf-8")) if args.qg_criteria.is_file() else None
+        report = run_spike(args.output, library, args.ffmpeg, reference, stock=stock, quick=args.quick,
+                           qg_criteria=qg_criteria)
     except X265Unavailable as exc:
         if args.collect_telemetry_only:
             raise
