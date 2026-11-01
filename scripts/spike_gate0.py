@@ -16,7 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
 
-from prism.codec.gate0 import frame_bits, residual_trace, verify_spatial_effect
+from prism.codec.gate0 import (
+    frame_bits, residual_trace, verify_net_effect, verify_spatial_effect)
 from prism.codec.x265_bridge import (BuildPin, EncoderConfig, X265Encoder,
                                     X265Library, X265Unavailable, qg_shape)
 
