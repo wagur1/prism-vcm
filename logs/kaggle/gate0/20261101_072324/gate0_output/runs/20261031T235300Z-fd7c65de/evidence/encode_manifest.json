@@ -1,0 +1,1006 @@
+{
+  "status": "FAIL",
+  "instrument": "x265_prism_residual_v1",
+  "mode": "full",
+  "gate0_complete": false,
+  "frames_per_encode": 10,
+  "encode_attempts": 12,
+  "encodes": 12,
+  "encoded_frames": 120,
+  "runs": [
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "stock",
+      "whole_bitstream_bytes": 7572355,
+      "per_frame_bits": [
+        11069112,
+        5480848,
+        5479768,
+        5472648,
+        5485192,
+        5475736,
+        5479040,
+        5484008,
+        5492064,
+        5474264
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "same_binary_no_map",
+      "whole_bitstream_bytes": 7572355,
+      "per_frame_bits": [
+        11069112,
+        5480848,
+        5479768,
+        5472648,
+        5485192,
+        5475736,
+        5479040,
+        5484008,
+        5492064,
+        5474264
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "zero",
+      "whole_bitstream_bytes": 7572355,
+      "per_frame_bits": [
+        11069112,
+        5480848,
+        5479768,
+        5472648,
+        5485192,
+        5475736,
+        5479040,
+        5484008,
+        5492064,
+        5474264
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "plus6",
+      "whole_bitstream_bytes": 5834122,
+      "per_frame_bits": [
+        8610496,
+        4215016,
+        4219472,
+        4203800,
+        4204712,
+        4210792,
+        4205056,
+        4201160,
+        4213536,
+        4202776
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "minus6",
+      "whole_bitstream_bytes": 9565918,
+      "per_frame_bits": [
+        13674864,
+        6991008,
+        6962376,
+        6887256,
+        6905872,
+        7028752,
+        7035696,
+        7054896,
+        6899072,
+        6901392
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "checkerboard",
+      "whole_bitstream_bytes": 7118487,
+      "per_frame_bits": [
+        11108904,
+        5045856,
+        5044232,
+        5134824,
+        5041720,
+        5037896,
+        5048192,
+        5068320,
+        5142608,
+        5089184
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 10,
+      "map": "stock",
+      "whole_bitstream_bytes": 7630973,
+      "per_frame_bits": [
+        11069136,
+        6175784,
+        5634608,
+        5051736,
+        6174208,
+        5632272,
+        5039936,
+        5042096,
+        6171216,
+        5037832
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 10,
+      "map": "same_binary_no_map",
+      "whole_bitstream_bytes": 7630973,
+      "per_frame_bits": [
+        11069136,
+        6175784,
+        5634608,
+        5051736,
+        6174208,
+        5632272,
+        5039936,
+        5042096,
+        6171216,
+        5037832
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 10,
+      "map": "zero",
+      "whole_bitstream_bytes": 7630973,
+      "per_frame_bits": [
+        11069136,
+        6175784,
+        5634608,
+        5051736,
+        6174208,
+        5632272,
+        5039936,
+        5042096,
+        6171216,
+        5037832
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 10,
+      "map": "plus6",
+      "whole_bitstream_bytes": 5714822,
+      "per_frame_bits": [
+        8610520,
+        4540848,
+        4205912,
+        3767256,
+        4564904,
+        4192984,
+        3752216,
+        3750536,
+        4563672,
+        3750768
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 10,
+      "map": "minus6",
+      "whole_bitstream_bytes": 9606621,
+      "per_frame_bits": [
+        13674888,
+        7462256,
+        7084776,
+        6678800,
+        7431856,
+        7072328,
+        6670992,
+        6670816,
+        7421984,
+        6665312
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 10,
+      "map": "checkerboard",
+      "whole_bitstream_bytes": 7393511,
+      "per_frame_bits": [
+        11108928,
+        5750360,
+        5485904,
+        4935736,
+        5781400,
+        5481952,
+        4926152,
+        4939640,
+        5785016,
+        4934040
+      ]
+    }
+  ],
+  "rc": "CQP",
+  "pin": {
+    "library_sha256": "cd0b8590180bd27eeadf193e59890d159aa5a03ae9b64ea1065f69cd7e805be6",
+    "shim_sha256": "a2283f4df7e804788dfeb3405dcbc922fa9e9e43179119fe7a823e7b977b43e5",
+    "version": "3.5",
+    "abi": 199,
+    "picture_size": 16816,
+    "enable_assembly": false
+  },
+  "stock_pin": {
+    "library_sha256": "3aa75e2f483736deb3c533805a934feaa400353c8dd7b2427d6b6d236c465c09",
+    "shim_sha256": "94def4a3eaacb9b9f3dcf7f6734746823a8c57eccf71c7ffcefbaebdc5dfdf67",
+    "version": "3.5",
+    "abi": 199,
+    "picture_size": 16816,
+    "enable_assembly": false
+  },
+  "rc_modes": [
+    "CRF",
+    "CRF"
+  ],
+  "frame_coverage": {
+    "zero": {
+      "0": {
+        "rows": 27285,
+        "residual": 27285,
+        "skip": 0
+      },
+      "3": {
+        "rows": 22092,
+        "residual": 22092,
+        "skip": 0
+      },
+      "2": {
+        "rows": 23292,
+        "residual": 23292,
+        "skip": 0
+      },
+      "1": {
+        "rows": 26769,
+        "residual": 26769,
+        "skip": 0
+      },
+      "7": {
+        "rows": 23361,
+        "residual": 23361,
+        "skip": 0
+      },
+      "5": {
+        "rows": 23589,
+        "residual": 23589,
+        "skip": 0
+      },
+      "4": {
+        "rows": 27069,
+        "residual": 27069,
+        "skip": 0
+      },
+      "6": {
+        "rows": 27192,
+        "residual": 27192,
+        "skip": 0
+      },
+      "9": {
+        "rows": 23580,
+        "residual": 23580,
+        "skip": 0
+      },
+      "8": {
+        "rows": 26949,
+        "residual": 26949,
+        "skip": 0
+      }
+    },
+    "plus6": {
+      "0": {
+        "rows": 23988,
+        "residual": 23988,
+        "skip": 0
+      },
+      "3": {
+        "rows": 22023,
+        "residual": 22023,
+        "skip": 0
+      },
+      "2": {
+        "rows": 26046,
+        "residual": 26046,
+        "skip": 0
+      },
+      "1": {
+        "rows": 26265,
+        "residual": 26265,
+        "skip": 0
+      },
+      "7": {
+        "rows": 24672,
+        "residual": 24672,
+        "skip": 0
+      },
+      "5": {
+        "rows": 26673,
+        "residual": 26673,
+        "skip": 0
+      },
+      "4": {
+        "rows": 26352,
+        "residual": 26352,
+        "skip": 0
+      },
+      "6": {
+        "rows": 26370,
+        "residual": 26370,
+        "skip": 0
+      },
+      "9": {
+        "rows": 24942,
+        "residual": 24942,
+        "skip": 0
+      },
+      "8": {
+        "rows": 26343,
+        "residual": 26343,
+        "skip": 0
+      }
+    },
+    "minus6": {
+      "0": {
+        "rows": 32400,
+        "residual": 32400,
+        "skip": 0
+      },
+      "3": {
+        "rows": 24768,
+        "residual": 24768,
+        "skip": 0
+      },
+      "2": {
+        "rows": 26229,
+        "residual": 26229,
+        "skip": 0
+      },
+      "1": {
+        "rows": 26682,
+        "residual": 26682,
+        "skip": 0
+      },
+      "7": {
+        "rows": 25416,
+        "residual": 25416,
+        "skip": 0
+      },
+      "5": {
+        "rows": 26661,
+        "residual": 26661,
+        "skip": 0
+      },
+      "4": {
+        "rows": 26988,
+        "residual": 26988,
+        "skip": 0
+      },
+      "6": {
+        "rows": 26460,
+        "residual": 26460,
+        "skip": 0
+      },
+      "9": {
+        "rows": 25086,
+        "residual": 25086,
+        "skip": 0
+      },
+      "8": {
+        "rows": 26307,
+        "residual": 26307,
+        "skip": 0
+      }
+    },
+    "checkerboard": {
+      "0": {
+        "rows": 25866,
+        "residual": 25866,
+        "skip": 0
+      },
+      "3": {
+        "rows": 17007,
+        "residual": 17007,
+        "skip": 0
+      },
+      "2": {
+        "rows": 22899,
+        "residual": 22899,
+        "skip": 0
+      },
+      "1": {
+        "rows": 16980,
+        "residual": 16980,
+        "skip": 0
+      },
+      "7": {
+        "rows": 19086,
+        "residual": 19086,
+        "skip": 0
+      },
+      "5": {
+        "rows": 23637,
+        "residual": 23637,
+        "skip": 0
+      },
+      "4": {
+        "rows": 16488,
+        "residual": 16488,
+        "skip": 0
+      },
+      "6": {
+        "rows": 16722,
+        "residual": 16722,
+        "skip": 0
+      },
+      "9": {
+        "rows": 19761,
+        "residual": 19761,
+        "skip": 0
+      },
+      "8": {
+        "rows": 16875,
+        "residual": 16875,
+        "skip": 0
+      }
+    }
+  },
+  "spatial_evidence": [
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "plus6",
+      "signed_median_qp_change": {
+        "per_frame": {
+          "0:1": {
+            "pairs": 20664,
+            "qg_spread": 7164,
+            "median": 6.0,
+            "state": "uncompensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 6.0
+          },
+          "1:1": {
+            "pairs": 7779,
+            "qg_spread": 4620,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "2:1": {
+            "pairs": 7887,
+            "qg_spread": 4620,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "3:1": {
+            "pairs": 7281,
+            "qg_spread": 4389,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "4:1": {
+            "pairs": 7644,
+            "qg_spread": 4521,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "5:1": {
+            "pairs": 7506,
+            "qg_spread": 4512,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "6:1": {
+            "pairs": 7536,
+            "qg_spread": 4482,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "7:1": {
+            "pairs": 7212,
+            "qg_spread": 4419,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "8:1": {
+            "pairs": 7836,
+            "qg_spread": 4578,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "9:1": {
+            "pairs": 7128,
+            "qg_spread": 4371,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          }
+        },
+        "frames_checked": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "1": 3.0
+      },
+      "bit_change_percent": -22.954985602233393
+    },
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "minus6",
+      "signed_median_qp_change": {
+        "per_frame": {
+          "0:-1": {
+            "pairs": 27285,
+            "qg_spread": 7740,
+            "median": 6.0,
+            "state": "uncompensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 6.0
+          },
+          "1:-1": {
+            "pairs": 11958,
+            "qg_spread": 5886,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "2:-1": {
+            "pairs": 10344,
+            "qg_spread": 5424,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "3:-1": {
+            "pairs": 8850,
+            "qg_spread": 5181,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "4:-1": {
+            "pairs": 9726,
+            "qg_spread": 5388,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "5:-1": {
+            "pairs": 12441,
+            "qg_spread": 5904,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "6:-1": {
+            "pairs": 12828,
+            "qg_spread": 5967,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "7:-1": {
+            "pairs": 13308,
+            "qg_spread": 6096,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "8:-1": {
+            "pairs": 9948,
+            "qg_spread": 5520,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "9:-1": {
+            "pairs": 9447,
+            "qg_spread": 5388,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          }
+        },
+        "frames_checked": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "-1": 4.0
+      },
+      "bit_change_percent": 26.32685604412366
+    },
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "checkerboard",
+      "signed_median_qp_change": {
+        "per_frame": {
+          "0:-1": {
+            "pairs": 13269,
+            "qg_spread": 3870,
+            "median": 6.0,
+            "state": "uncompensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 6.0
+          },
+          "1:-1": {
+            "pairs": 2883,
+            "qg_spread": 2235,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "2:-1": {
+            "pairs": 3330,
+            "qg_spread": 2355,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "3:-1": {
+            "pairs": 5379,
+            "qg_spread": 2607,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "4:-1": {
+            "pairs": 2916,
+            "qg_spread": 2289,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "5:-1": {
+            "pairs": 3036,
+            "qg_spread": 2208,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "6:-1": {
+            "pairs": 3558,
+            "qg_spread": 2433,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "7:-1": {
+            "pairs": 3381,
+            "qg_spread": 2298,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "8:-1": {
+            "pairs": 5655,
+            "qg_spread": 2769,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "9:-1": {
+            "pairs": 4275,
+            "qg_spread": 2436,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "0:1": {
+            "pairs": 8925,
+            "qg_spread": 3318,
+            "median": 6.0,
+            "state": "uncompensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 6.0
+          },
+          "1:1": {
+            "pairs": 2400,
+            "qg_spread": 2103,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          },
+          "2:1": {
+            "pairs": 2136,
+            "qg_spread": 1965,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          },
+          "3:1": {
+            "pairs": 2067,
+            "qg_spread": 1881,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          },
+          "4:1": {
+            "pairs": 2169,
+            "qg_spread": 2001,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          },
+          "5:1": {
+            "pairs": 2271,
+            "qg_spread": 2043,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          },
+          "6:1": {
+            "pairs": 2064,
+            "qg_spread": 1914,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          },
+          "7:1": {
+            "pairs": 2124,
+            "qg_spread": 2031,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          },
+          "8:1": {
+            "pairs": 2133,
+            "qg_spread": 1965,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          },
+          "9:1": {
+            "pairs": 2229,
+            "qg_spread": 1914,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          }
+        },
+        "frames_checked": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "-1": 5.0,
+        "1": 7.0,
+        "separation": 2.0
+      },
+      "bit_change_percent": -5.993749632710033
+    },
+    {
+      "qp": 27,
+      "gop": 10,
+      "map": "plus6",
+      "signed_median_qp_change": {
+        "per_frame": {
+          "0:1": {
+            "pairs": 20664,
+            "qg_spread": 7164,
+            "median": 6.0,
+            "state": "uncompensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 6.0
+          },
+          "1:1": {
+            "pairs": 22338,
+            "qg_spread": 8046,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "2:1": {
+            "pairs": 19245,
+            "qg_spread": 7401,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 4.0
+          },
+          "3:1": {
+            "pairs": 16038,
+            "qg_spread": 7002,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "4:1": {
+            "pairs": 22500,
+            "qg_spread": 8043,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "5:1": {
+            "pairs": 19935,
+            "qg_spread": 7395,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 4.0
+          },
+          "6:1": {
+            "pairs": 22662,
+            "qg_spread": 8055,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "7:1": {
+            "pairs": 18318,
+            "qg_spread": 7143,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "8:1": {
+            "pairs": 22404,
+            "qg_spread": 8058,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "9:1": {
+            "pairs": 18687,
+            "qg_spread": 7308,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          }
+        },
+        "frames_checked": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "1": 3.0
+      },
+      "bit_change_percent": -25.110179265475065
+    }
+  ],
+  "reason": "compensated frame 3 sign -1: median 3.000 outside feedback-state band (3.5, 6.0) (CONFIG v1.4 E-F0, AG-2/CX-1 esc#8)"
+}

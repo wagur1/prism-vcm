@@ -1,0 +1,30 @@
+{
+  "prefix": "/kaggle/working/gate0_output/runs/20261031T235300Z-fd7c65de/evidence/qp27_gop10_same_binary_no_map",
+  "map": "same_binary_no_map",
+  "pin": {
+    "library_sha256": "cd0b8590180bd27eeadf193e59890d159aa5a03ae9b64ea1065f69cd7e805be6",
+    "shim_sha256": "a2283f4df7e804788dfeb3405dcbc922fa9e9e43179119fe7a823e7b977b43e5",
+    "version": "3.5",
+    "abi": 199,
+    "picture_size": 16816,
+    "enable_assembly": false
+  },
+  "config": {
+    "qp": 27,
+    "preset": "medium",
+    "aq_mode": 1,
+    "cutree": false,
+    "sao": true,
+    "qg_size": 16,
+    "gop": 10,
+    "bframes": 3,
+    "fps": 30,
+    "rc_mode": "CRF",
+    "crf": 20.0,
+    "bitrate_kbps": null,
+    "vbv_maxrate_kbps": null,
+    "vbv_bufsize_kbits": null
+  },
+  "width": 1920,
+  "height": 1080
+}

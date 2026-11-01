@@ -1,0 +1,36 @@
+{
+  "instrument": "x265_prism_residual_v1",
+  "patch_audit": "council-reviewed 2026-11-01 (m_cuDepth fix; escalations/20261101_021216_verdict.md); verify at build time",
+  "enable_assembly": false,
+  "asm_decision_reason": "no usable NASM; recorded fallback per council 2026-11-01 (identical stock/patched flags; F0-scope only)",
+  "nasm_version": "none",
+  "repo_commit": "3cbaf9f25cbb4d32f77cebe48423e9e73874f4ae",
+  "x265_tag": "3.5",
+  "x265_commit": "f0c1022b6be121a753ff02853fbe33da71988656",
+  "stock_commit": "f0c1022b6be121a753ff02853fbe33da71988656",
+  "hm_tag": "HM-16.2",
+  "hm_commit": "41801c786b2fb37dafc779f824b1f62fbe713bbe",
+  "patch_sha256": "88cb0bc98b415daf25bc43549c379a479a145128ef909f98701c912a7e2d7cd5",
+  "hm_sha256": "88e9efd933380bcfb221de7853c7b4bdf9b9fd5b7018a741edccb612046958aa",
+  "hm_compiler_policy": {
+    "source_tag": "HM-16.2",
+    "source_diff": "NONE",
+    "toolchain": "gcc-13.3.0",
+    "flags_override": {
+      "stripped": [
+        "-Werror"
+      ],
+      "added": [
+        "-Wno-error",
+        "-std=gnu++98"
+      ]
+    },
+    "rationale": "Toolchain diagnostic compatibility; zero code modification (council 20261101_025850)"
+  },
+  "hm_conformance_required": "decoder exit 0; cross-check reconstruction MD5 vs FFmpeg decode (SEIDecodedPictureHash) in full run",
+  "library": "/kaggle/working/prism-vcm/gate0/build/x265/install/lib/libx265.so",
+  "shim": "/kaggle/working/prism-vcm/gate0/build/shim/libprism_x265.so",
+  "stock_library": "/kaggle/working/prism-vcm/gate0/build/stock/x265/install/lib/libx265.so",
+  "stock_shim": "/kaggle/working/prism-vcm/gate0/build/stock/shim/libprism_x265.so",
+  "reference_decoder": "/kaggle/working/prism-vcm/gate0/build/hm/bin/TAppDecoderStatic"
+}

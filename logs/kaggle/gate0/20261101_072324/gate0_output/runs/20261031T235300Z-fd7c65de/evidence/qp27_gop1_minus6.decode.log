@@ -1,0 +1,14 @@
+
+HM software: Decoder Version [16.2] (including RExt)[Linux][GCC 13.3.0][64 bit] 
+POC    0 TId: 0 ( I-SLICE, QP 17 ) [DT  0.439] [L0 ] [L1 ] [:,(unk)] 
+POC    0 TId: 0 ( I-SLICE, QP 33 ) [DT  0.291] [L0 ] [L1 ] [:,(unk)] 
+POC    0 TId: 0 ( I-SLICE, QP 33 ) [DT  0.296] [L0 ] [L1 ] [:,(unk)] 
+POC    0 TId: 0 ( I-SLICE, QP 33 ) [DT  0.254] [L0 ] [L1 ] [:,(unk)] 
+POC    0 TId: 0 ( I-SLICE, QP 33 ) [DT  0.260] [L0 ] [L1 ] [:,(unk)] 
+POC    0 TId: 0 ( I-SLICE, QP 33 ) [DT  0.298] [L0 ] [L1 ] [:,(unk)] 
+POC    0 TId: 0 ( I-SLICE, QP 33 ) [DT  0.294] [L0 ] [L1 ] [:,(unk)] 
+POC    0 TId: 0 ( I-SLICE, QP 33 ) [DT  0.298] [L0 ] [L1 ] [:,(unk)] 
+POC    0 TId: 0 ( I-SLICE, QP 33 ) [DT  0.258] [L0 ] [L1 ] [:,(unk)] 
+POC    0 TId: 0 ( I-SLICE, QP 33 ) [DT  0.259] [L0 ] [L1 ] [:,(unk)] 
+
+ Total Time:        3.326 sec.

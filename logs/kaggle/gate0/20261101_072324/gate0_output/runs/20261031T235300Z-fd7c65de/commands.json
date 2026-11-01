@@ -1,0 +1,31 @@
+{
+  "build": [
+    "bash",
+    "/kaggle/working/prism-vcm/gate0/build_gate0_stack.sh"
+  ],
+  "quick": false,
+  "spike": [
+    "/usr/bin/python3",
+    "/kaggle/working/prism-vcm/scripts/spike_gate0.py",
+    "--output",
+    "/kaggle/working/gate0_output/runs/20261031T235300Z-fd7c65de/evidence",
+    "--pin",
+    "/kaggle/working/prism-vcm/gate0/build-pin.json",
+    "--stock-pin",
+    "/kaggle/working/prism-vcm/gate0/stock-pin.json",
+    "--stock-shim",
+    "/kaggle/working/prism-vcm/gate0/build/stock/shim/libprism_x265.so",
+    "--stock-library",
+    "/kaggle/working/prism-vcm/gate0/build/stock/x265/install/lib/libx265.so",
+    "--reference-command-json",
+    "[\"/kaggle/working/prism-vcm/gate0/build/hm/bin/TAppDecoderStatic\", \"-b\", \"{bitstream}\"]"
+  ],
+  "environment": {
+    "PRISM_X265_SHIM": "/kaggle/working/prism-vcm/gate0/build/shim/libprism_x265.so",
+    "PRISM_X265_LIBRARY": "/kaggle/working/prism-vcm/gate0/build/x265/install/lib/libx265.so"
+  },
+  "stock_worker_environment": {
+    "PRISM_X265_SHIM": "/kaggle/working/prism-vcm/gate0/build/stock/shim/libprism_x265.so",
+    "PRISM_X265_LIBRARY": "/kaggle/working/prism-vcm/gate0/build/stock/x265/install/lib/libx265.so"
+  }
+}

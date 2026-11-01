@@ -1,0 +1,21 @@
+x265 [info]: HEVC encoder version 3.5
+x265 [info]: build info [Linux][GCC 13.3.0][64 bit][noasm] 8bit
+x265 [info]: using cpu capabilities: none!
+x265 [info]: Main Intra profile, Level-4 (Main tier)
+x265 [warning]: No thread pool allocated, --lookahead-slices disabled
+x265 [info]: Slices                              : 1
+x265 [info]: frame threads / pool features       : 1 / none
+x265 [info]: Coding QT: max CU size, min CU size : 64 / 8
+x265 [info]: Residual QT: max TU size, max depth : 32 / 1 inter / 1 intra
+x265 [info]: ME / range / subpel / merge         : hex / 57 / 2 / 3
+x265 [info]: Lookahead / bframes / badapt        : 0 / 0 / 0
+x265 [info]: b-pyramid / weightp / weightb       : 0 / 0 / 0
+x265 [info]: References / ref-limit  cu / depth  : 1 / off / on
+x265 [info]: AQ: mode / str / qg-size / cu-tree  : 1 / 1.0 / 16 / 0
+x265 [info]: Rate Control / qCompress            : CRF-20.0 / 0.60
+x265 [info]: tools: rd=3 psy-rd=2.00 early-skip rskip mode=1 signhide tmvp
+x265 [info]: tools: b-intra strong-intra-smoothing deblock sao
+x265 [info]: frame I:     10, Avg QP:38.92  kb/s: 139460.45
+x265 [info]: consecutive B-frames: 100.0% 
+
+encoded 10 frames in 53.09s (0.19 fps), 139460.45 kb/s, Avg QP:38.92

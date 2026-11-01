@@ -1,0 +1,1871 @@
+ARGV ["bash", "/kaggle/working/prism-vcm/gate0/build_gate0_stack.sh"]
+
+[GATE0 STEP] initialize_build_log
+
+[GATE0 STEP] initialize_workspace
+
+[GATE0 STEP] prerequisites
+
+[GATE0 STEP] python_dependencies
+gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+Copyright (C) 2023 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+cmake version 3.31.10
+
+CMake suite maintained and supported by Kitware (kitware.com/cmake).
+ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers
+built with gcc 13 (Ubuntu 13.2.0-23ubuntu3)
+configuration: --prefix=/usr --extra-version=3ubuntu5 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --disable-omx --enable-gnutls --enable-libaom --enable-libass --enable-libbs2b --enable-libcaca --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-openal --enable-opencl --enable-opengl --disable-sndio --enable-libvpl --disable-libmfx --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-ladspa --enable-libbluray --enable-libjack --enable-libpulse --enable-librabbitmq --enable-librist --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libx264 --enable-libzmq --enable-libzvbi --enable-lv2 --enable-sdl2 --enable-libplacebo --enable-librav1e --enable-pocketsphinx --enable-librsvg --enable-libjxl --enable-shared
+libavutil      58. 29.100 / 58. 29.100
+libavcodec     60. 31.102 / 60. 31.102
+libavformat    60. 16.100 / 60. 16.100
+libavdevice    60.  3.100 / 60.  3.100
+libavfilter     9. 12.100 /  9. 12.100
+libswscale      7.  5.100 /  7.  5.100
+libswresample   4. 12.100 /  4. 12.100
+libpostproc    57.  3.100 / 57.  3.100
+
+[GATE0 STEP] assembly_decision
+ASSEMBLY=OFF (no usable NASM; recorded fallback per council 2026-11-01 (identical stock/patched flags; F0-scope only))
+
+[GATE0 STEP] clone_x265_3.5
+Cloning into '/kaggle/working/prism-vcm/gate0/src/x265'...
+Note: switching to 'f0c1022b6be121a753ff02853fbe33da71988656'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+SOURCE https://bitbucket.org/multicoreware/x265_git.git tag=3.5 commit=f0c1022b6be121a753ff02853fbe33da71988656
+
+[GATE0 STEP] clone_stock_x265_3.5
+Cloning into '/kaggle/working/prism-vcm/gate0/src/x265-stock'...
+Note: switching to 'f0c1022b6be121a753ff02853fbe33da71988656'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+SOURCE https://bitbucket.org/multicoreware/x265_git.git tag=3.5 commit=f0c1022b6be121a753ff02853fbe33da71988656
+
+[GATE0 STEP] apply_x265_residual_patch
+error: patch failed: source/encoder/frameencoder.cpp:25
+error: source/encoder/frameencoder.cpp: patch does not apply
+error: source/encoder/prism_residual_trace.h: No such file or directory
+git apply succeeded.
+
+[GATE0 STEP] configure_patched_x265
+-- cmake version 3.31.10
+CMake Deprecation Warning at CMakeLists.txt:10 (cmake_policy):
+  The OLD behavior for policy CMP0025 will be removed from a future version
+  of CMake.
+
+  The cmake-policies(7) manual explains that the OLD behaviors of all
+  policies are deprecated and that a policy should be set to OLD only under
+  specific short-term circumstances.  Projects should be ported to the NEW
+  behavior and not rely on setting a policy to OLD.
+
+
+CMake Deprecation Warning at CMakeLists.txt:16 (cmake_policy):
+  The OLD behavior for policy CMP0054 will be removed from a future version
+  of CMake.
+
+  The cmake-policies(7) manual explains that the OLD behaviors of all
+  policies are deprecated and that a policy should be set to OLD only under
+  specific short-term circumstances.  Projects should be ported to the NEW
+  behavior and not rely on setting a policy to OLD.
+
+
+CMake Warning (dev) at CMakeLists.txt:19 (project):
+  cmake_minimum_required() should be called prior to this top-level project()
+  call.  Please see the cmake-commands(7) manual for usage documentation of
+  both commands.
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- The C compiler identification is GNU 13.3.0
+-- The CXX compiler identification is GNU 13.3.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/gcc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/g++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+CMake Deprecation Warning at CMakeLists.txt:20 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+
+-- Detected x86_64 target processor
+CMake Warning (dev) at /usr/local/lib/python3.13/dist-packages/cmake/data/share/cmake-3.31/Modules/FindPackageHandleStandardArgs.cmake:441 (message):
+  The package name passed to `find_package_handle_standard_args` (NUMA) does
+  not match the name of the calling package (Numa).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  cmake/FindNuma.cmake:43 (find_package_handle_standard_args)
+  CMakeLists.txt:100 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Found NUMA: /usr
+-- Looking for numa_node_of_cpu
+-- Looking for numa_node_of_cpu - found
+-- libnuma found, building with support for NUMA nodes
+CMake Warning (dev) at /usr/local/lib/python3.13/dist-packages/cmake/data/share/cmake-3.31/Modules/CheckIncludeFiles.cmake:118 (message):
+  Policy CMP0075 is not set: Include file check macros honor
+  CMAKE_REQUIRED_LIBRARIES.  Run "cmake --help-policy CMP0075" for policy
+  details.  Use the cmake_policy command to set the policy and suppress this
+  warning.
+
+  CMAKE_REQUIRED_LIBRARIES is set to:
+
+    numa
+
+  For compatibility with CMake 3.11 and below this check is ignoring it.
+Call Stack (most recent call first):
+  CMakeLists.txt:175 (check_include_files)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Looking for include file inttypes.h
+-- Looking for include file inttypes.h - found
+-- Performing Test CC_HAS_NO_STRICT_OVERFLOW
+-- Performing Test CC_HAS_NO_STRICT_OVERFLOW - Success
+-- Performing Test CC_HAS_NO_NARROWING
+-- Performing Test CC_HAS_NO_NARROWING - Success
+-- Performing Test CC_HAS_NO_ARRAY_BOUNDS
+-- Performing Test CC_HAS_NO_ARRAY_BOUNDS - Success
+-- Performing Test CC_HAS_FAST_MATH
+-- Performing Test CC_HAS_FAST_MATH - Success
+-- Performing Test CC_HAS_STACK_REALIGN
+-- Performing Test CC_HAS_STACK_REALIGN - Success
+-- Performing Test CC_HAS_FNO_EXCEPTIONS_FLAG
+-- Performing Test CC_HAS_FNO_EXCEPTIONS_FLAG - Success
+CMake Warning (dev) at /usr/local/lib/python3.13/dist-packages/cmake/data/share/cmake-3.31/Modules/FindPackageHandleStandardArgs.cmake:441 (message):
+  The package name passed to `find_package_handle_standard_args` (nasm) does
+  not match the name of the calling package (Nasm).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  cmake/FindNasm.cmake:23 (find_package_handle_standard_args)
+  CMakeLists.txt:352 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Could NOT find nasm (missing: NASM_EXECUTABLE) 
+-- GIT_EXECUTABLE /usr/bin/git
+-- GIT LIVE REPO VERSION RETRIEVED
+-- X265 RELEASE VERSION 3.5
+-- Looking for strtok_r
+-- Looking for strtok_r - found
+-- Configuring done (2.3s)
+-- Generating done (0.0s)
+CMake Warning:
+  Manually-specified variables were not used by the project:
+
+    CMAKE_INSTALL_LIBDIR
+    CMAKE_POLICY_VERSION_MINIMUM
+    LINKED_10BIT
+    LINKED_12BIT
+    MAIN12
+
+
+-- Build files have been written to: /kaggle/working/prism-vcm/gate0/build/x265
+
+[GATE0 STEP] build_patched_x265
+[  1%] Building CXX object encoder/CMakeFiles/encoder.dir/analysis.cpp.o
+[  3%] Building CXX object encoder/CMakeFiles/encoder.dir/search.cpp.o
+[  5%] Building CXX object encoder/CMakeFiles/encoder.dir/bitcost.cpp.o
+[  7%] Building CXX object common/CMakeFiles/common.dir/primitives.cpp.o
+/kaggle/working/prism-vcm/gate0/src/x265/source/encoder/analysis.cpp: In member function 'x265::Mode& x265::Analysis::compressCTU(x265::CUData&, x265::Frame&, const x265::CUGeom&, const x265::Entropy&)':
+/kaggle/working/prism-vcm/gate0/src/x265/source/encoder/analysis.cpp:160:51: warning: comparing the result of pointer addition '((*((x265::Analysis*)this)->x265::Analysis::<anonymous>.x265::Search::m_frame->x265::Frame::m_ctuInfo) + ((sizetype)(((long unsigned int)ctu.x265::CUData::m_cuAddr) * 272)))' and NULL [-Waddress]
+  160 |     if (m_param->bCTUInfo && (*m_frame->m_ctuInfo + ctu.m_cuAddr))
+      |                              ~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~
+[  9%] Building CXX object encoder/CMakeFiles/encoder.dir/motion.cpp.o
+[ 11%] Building CXX object common/CMakeFiles/common.dir/pixel.cpp.o
+[ 13%] Building CXX object common/CMakeFiles/common.dir/dct.cpp.o
+[ 15%] Building CXX object common/CMakeFiles/common.dir/lowpassdct.cpp.o
+[ 17%] Building CXX object encoder/CMakeFiles/encoder.dir/slicetype.cpp.o
+[ 19%] Building CXX object common/CMakeFiles/common.dir/ipfilter.cpp.o
+[ 21%] Building CXX object encoder/CMakeFiles/encoder.dir/frameencoder.cpp.o
+[ 23%] Building CXX object encoder/CMakeFiles/encoder.dir/framefilter.cpp.o
+[ 25%] Building CXX object common/CMakeFiles/common.dir/intrapred.cpp.o
+[ 27%] Building CXX object encoder/CMakeFiles/encoder.dir/level.cpp.o
+[ 29%] Building CXX object encoder/CMakeFiles/encoder.dir/nal.cpp.o
+[ 31%] Building CXX object encoder/CMakeFiles/encoder.dir/sei.cpp.o
+[ 33%] Building CXX object encoder/CMakeFiles/encoder.dir/sao.cpp.o
+[ 35%] Building CXX object common/CMakeFiles/common.dir/loopfilter.cpp.o
+[ 37%] Building CXX object common/CMakeFiles/common.dir/constants.cpp.o
+[ 39%] Building CXX object encoder/CMakeFiles/encoder.dir/entropy.cpp.o
+[ 41%] Building CXX object common/CMakeFiles/common.dir/cpu.cpp.o
+[ 43%] Building CXX object encoder/CMakeFiles/encoder.dir/dpb.cpp.o
+[ 45%] Building CXX object encoder/CMakeFiles/encoder.dir/ratecontrol.cpp.o
+[ 47%] Building CXX object common/CMakeFiles/common.dir/version.cpp.o
+[ 49%] Building CXX object common/CMakeFiles/common.dir/threading.cpp.o
+[ 50%] Building CXX object common/CMakeFiles/common.dir/threadpool.cpp.o
+[ 52%] Building CXX object encoder/CMakeFiles/encoder.dir/reference.cpp.o
+[ 54%] Building CXX object common/CMakeFiles/common.dir/wavefront.cpp.o
+[ 56%] Building CXX object encoder/CMakeFiles/encoder.dir/encoder.cpp.o
+[ 58%] Building CXX object common/CMakeFiles/common.dir/md5.cpp.o
+[ 60%] Building CXX object encoder/CMakeFiles/encoder.dir/api.cpp.o
+/kaggle/working/prism-vcm/gate0/src/x265/source/encoder/ratecontrol.cpp: In member function 'int x265::RateControl::writeRateControlFrameStats(x265::Frame*, x265::RateControlEntry*)':
+/kaggle/working/prism-vcm/gate0/src/x265/source/encoder/ratecontrol.cpp:3025:36: warning: '~' directive writing 1 byte into a region of size between 0 and 127 [-Wformat-overflow=]
+ 3025 |             sprintf(deltaPOC, "%s%d~", deltaPOC, rpsWriter->deltaPOC[i]);
+      |                                    ^
+In file included from /usr/include/stdio.h:980,
+                 from /usr/include/c++/13/cstdio:42,
+                 from /kaggle/working/prism-vcm/gate0/src/x265/source/common/common.h:33,
+                 from /kaggle/working/prism-vcm/gate0/src/x265/source/encoder/ratecontrol.cpp:30:
+In function 'int sprintf(char*, const char*, ...)',
+    inlined from 'int x265::RateControl::writeRateControlFrameStats(x265::Frame*, x265::RateControlEntry*)' at /kaggle/working/prism-vcm/gate0/src/x265/source/encoder/ratecontrol.cpp:3025:20:
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:30:34: note: '__builtin___sprintf_chk' output between 3 and 140 bytes into a destination of size 128
+   30 |   return __builtin___sprintf_chk (__s, __USE_FORTIFY_LEVEL - 1,
+      |          ~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   31 |                                   __glibc_objsize (__s), __fmt,
+      |                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   32 |                                   __va_arg_pack ());
+      |                                   ~~~~~~~~~~~~~~~~~
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:30:34: warning: '__builtin___sprintf_chk' argument 5 overlaps destination object 'deltaPOC' [-Wrestrict]
+/kaggle/working/prism-vcm/gate0/src/x265/source/encoder/ratecontrol.cpp: In member function 'int x265::RateControl::writeRateControlFrameStats(x265::Frame*, x265::RateControlEntry*)':
+/kaggle/working/prism-vcm/gate0/src/x265/source/encoder/ratecontrol.cpp:3016:14: note: destination object referenced by 'restrict'-qualified argument 1 was declared here
+ 3016 |         char deltaPOC[128];
+      |              ^~~~~~~~
+/kaggle/working/prism-vcm/gate0/src/x265/source/encoder/ratecontrol.cpp:3026:33: warning: '~' directive writing 1 byte into a region of size between 0 and 39 [-Wformat-overflow=]
+ 3026 |             sprintf(bUsed, "%s%d~", bUsed, rpsWriter->bUsed[i]);
+      |                                 ^
+In function 'int sprintf(char*, const char*, ...)',
+    inlined from 'int x265::RateControl::writeRateControlFrameStats(x265::Frame*, x265::RateControlEntry*)' at /kaggle/working/prism-vcm/gate0/src/x265/source/encoder/ratecontrol.cpp:3026:20:
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:30:34: note: '__builtin___sprintf_chk' output between 3 and 42 bytes into a destination of size 40
+   30 |   return __builtin___sprintf_chk (__s, __USE_FORTIFY_LEVEL - 1,
+      |          ~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   31 |                                   __glibc_objsize (__s), __fmt,
+      |                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   32 |                                   __va_arg_pack ());
+      |                                   ~~~~~~~~~~~~~~~~~
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:30:34: warning: '__builtin___sprintf_chk' argument 5 overlaps destination object 'bUsed' [-Wrestrict]
+/kaggle/working/prism-vcm/gate0/src/x265/source/encoder/ratecontrol.cpp: In member function 'int x265::RateControl::writeRateControlFrameStats(x265::Frame*, x265::RateControlEntry*)':
+/kaggle/working/prism-vcm/gate0/src/x265/source/encoder/ratecontrol.cpp:3017:14: note: destination object referenced by 'restrict'-qualified argument 1 was declared here
+ 3017 |         char bUsed[40];
+      |              ^~~~~
+[ 62%] Building CXX object common/CMakeFiles/common.dir/bitstream.cpp.o
+[ 64%] Building CXX object common/CMakeFiles/common.dir/yuv.cpp.o
+[ 66%] Building CXX object encoder/CMakeFiles/encoder.dir/weightPrediction.cpp.o
+[ 68%] Building CXX object common/CMakeFiles/common.dir/shortyuv.cpp.o
+[ 70%] Building CXX object common/CMakeFiles/common.dir/picyuv.cpp.o
+[ 72%] Building CXX object common/CMakeFiles/common.dir/common.cpp.o
+[ 74%] Building CXX object common/CMakeFiles/common.dir/param.cpp.o
+[ 76%] Building CXX object common/CMakeFiles/common.dir/frame.cpp.o
+[ 78%] Building CXX object common/CMakeFiles/common.dir/framedata.cpp.o
+[ 80%] Building CXX object common/CMakeFiles/common.dir/cudata.cpp.o
+[ 80%] Built target encoder
+[ 82%] Building CXX object common/CMakeFiles/common.dir/slice.cpp.o
+[ 84%] Building CXX object common/CMakeFiles/common.dir/lowres.cpp.o
+[ 86%] Building CXX object common/CMakeFiles/common.dir/piclist.cpp.o
+[ 88%] Building CXX object common/CMakeFiles/common.dir/predict.cpp.o
+[ 90%] Building CXX object common/CMakeFiles/common.dir/scalinglist.cpp.o
+[ 92%] Building CXX object common/CMakeFiles/common.dir/quant.cpp.o
+[ 94%] Building CXX object common/CMakeFiles/common.dir/deblock.cpp.o
+[ 96%] Building CXX object common/CMakeFiles/common.dir/scaler.cpp.o
+[ 96%] Built target common
+[ 98%] Linking CXX static library libx265.a
+[100%] Linking CXX shared library libx265.so
+[100%] Built target x265-static
+[100%] Built target x265-shared
+-- Install configuration: "Release"
+-- Installing: /kaggle/working/prism-vcm/gate0/build/x265/install/lib/libx265.a
+-- Installing: /kaggle/working/prism-vcm/gate0/build/x265/install/include/x265.h
+-- Installing: /kaggle/working/prism-vcm/gate0/build/x265/install/include/x265_config.h
+-- Installing: /kaggle/working/prism-vcm/gate0/build/x265/install/lib/libx265.so.199
+-- Installing: /kaggle/working/prism-vcm/gate0/build/x265/install/lib/libx265.so
+-- Installing: /kaggle/working/prism-vcm/gate0/build/x265/install/lib/pkgconfig/x265.pc
+
+[GATE0 STEP] configure_patched_shim
+-- The C compiler identification is GNU 13.3.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/gcc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Configuring done (0.2s)
+-- Generating done (0.0s)
+-- Build files have been written to: /kaggle/working/prism-vcm/gate0/build/shim
+
+[GATE0 STEP] build_patched_shim
+[ 50%] Building C object CMakeFiles/prism_x265.dir/x265_shim.c.o
+[100%] Linking C shared library libprism_x265.so
+[100%] Built target prism_x265
+
+[GATE0 STEP] configure_stock_x265
+-- cmake version 3.31.10
+CMake Deprecation Warning at CMakeLists.txt:10 (cmake_policy):
+  The OLD behavior for policy CMP0025 will be removed from a future version
+  of CMake.
+
+  The cmake-policies(7) manual explains that the OLD behaviors of all
+  policies are deprecated and that a policy should be set to OLD only under
+  specific short-term circumstances.  Projects should be ported to the NEW
+  behavior and not rely on setting a policy to OLD.
+
+
+CMake Deprecation Warning at CMakeLists.txt:16 (cmake_policy):
+  The OLD behavior for policy CMP0054 will be removed from a future version
+  of CMake.
+
+  The cmake-policies(7) manual explains that the OLD behaviors of all
+  policies are deprecated and that a policy should be set to OLD only under
+  specific short-term circumstances.  Projects should be ported to the NEW
+  behavior and not rely on setting a policy to OLD.
+
+
+CMake Warning (dev) at CMakeLists.txt:19 (project):
+  cmake_minimum_required() should be called prior to this top-level project()
+  call.  Please see the cmake-commands(7) manual for usage documentation of
+  both commands.
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- The C compiler identification is GNU 13.3.0
+-- The CXX compiler identification is GNU 13.3.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/gcc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/g++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+CMake Deprecation Warning at CMakeLists.txt:20 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+
+-- Detected x86_64 target processor
+CMake Warning (dev) at /usr/local/lib/python3.13/dist-packages/cmake/data/share/cmake-3.31/Modules/FindPackageHandleStandardArgs.cmake:441 (message):
+  The package name passed to `find_package_handle_standard_args` (NUMA) does
+  not match the name of the calling package (Numa).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  cmake/FindNuma.cmake:43 (find_package_handle_standard_args)
+  CMakeLists.txt:100 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Found NUMA: /usr
+-- Looking for numa_node_of_cpu
+-- Looking for numa_node_of_cpu - found
+-- libnuma found, building with support for NUMA nodes
+CMake Warning (dev) at /usr/local/lib/python3.13/dist-packages/cmake/data/share/cmake-3.31/Modules/CheckIncludeFiles.cmake:118 (message):
+  Policy CMP0075 is not set: Include file check macros honor
+  CMAKE_REQUIRED_LIBRARIES.  Run "cmake --help-policy CMP0075" for policy
+  details.  Use the cmake_policy command to set the policy and suppress this
+  warning.
+
+  CMAKE_REQUIRED_LIBRARIES is set to:
+
+    numa
+
+  For compatibility with CMake 3.11 and below this check is ignoring it.
+Call Stack (most recent call first):
+  CMakeLists.txt:175 (check_include_files)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Looking for include file inttypes.h
+-- Looking for include file inttypes.h - found
+-- Performing Test CC_HAS_NO_STRICT_OVERFLOW
+-- Performing Test CC_HAS_NO_STRICT_OVERFLOW - Success
+-- Performing Test CC_HAS_NO_NARROWING
+-- Performing Test CC_HAS_NO_NARROWING - Success
+-- Performing Test CC_HAS_NO_ARRAY_BOUNDS
+-- Performing Test CC_HAS_NO_ARRAY_BOUNDS - Success
+-- Performing Test CC_HAS_FAST_MATH
+-- Performing Test CC_HAS_FAST_MATH - Success
+-- Performing Test CC_HAS_STACK_REALIGN
+-- Performing Test CC_HAS_STACK_REALIGN - Success
+-- Performing Test CC_HAS_FNO_EXCEPTIONS_FLAG
+-- Performing Test CC_HAS_FNO_EXCEPTIONS_FLAG - Success
+CMake Warning (dev) at /usr/local/lib/python3.13/dist-packages/cmake/data/share/cmake-3.31/Modules/FindPackageHandleStandardArgs.cmake:441 (message):
+  The package name passed to `find_package_handle_standard_args` (nasm) does
+  not match the name of the calling package (Nasm).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  cmake/FindNasm.cmake:23 (find_package_handle_standard_args)
+  CMakeLists.txt:352 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Could NOT find nasm (missing: NASM_EXECUTABLE) 
+-- GIT_EXECUTABLE /usr/bin/git
+-- GIT LIVE REPO VERSION RETRIEVED
+-- X265 RELEASE VERSION 3.5
+-- Looking for strtok_r
+-- Looking for strtok_r - found
+-- Configuring done (1.4s)
+-- Generating done (0.0s)
+CMake Warning:
+  Manually-specified variables were not used by the project:
+
+    CMAKE_INSTALL_LIBDIR
+    CMAKE_POLICY_VERSION_MINIMUM
+    LINKED_10BIT
+    LINKED_12BIT
+    MAIN12
+
+
+-- Build files have been written to: /kaggle/working/prism-vcm/gate0/build/stock/x265
+
+[GATE0 STEP] build_stock_x265
+[  1%] Building CXX object encoder/CMakeFiles/encoder.dir/analysis.cpp.o
+[  5%] Building CXX object encoder/CMakeFiles/encoder.dir/bitcost.cpp.o
+[  5%] Building CXX object encoder/CMakeFiles/encoder.dir/search.cpp.o
+[  7%] Building CXX object common/CMakeFiles/common.dir/primitives.cpp.o
+/kaggle/working/prism-vcm/gate0/src/x265-stock/source/encoder/analysis.cpp: In member function 'x265::Mode& x265::Analysis::compressCTU(x265::CUData&, x265::Frame&, const x265::CUGeom&, const x265::Entropy&)':
+/kaggle/working/prism-vcm/gate0/src/x265-stock/source/encoder/analysis.cpp:160:51: warning: comparing the result of pointer addition '((*((x265::Analysis*)this)->x265::Analysis::<anonymous>.x265::Search::m_frame->x265::Frame::m_ctuInfo) + ((sizetype)(((long unsigned int)ctu.x265::CUData::m_cuAddr) * 272)))' and NULL [-Waddress]
+  160 |     if (m_param->bCTUInfo && (*m_frame->m_ctuInfo + ctu.m_cuAddr))
+      |                              ~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~
+[  9%] Building CXX object common/CMakeFiles/common.dir/pixel.cpp.o
+[ 11%] Building CXX object encoder/CMakeFiles/encoder.dir/motion.cpp.o
+[ 13%] Building CXX object common/CMakeFiles/common.dir/dct.cpp.o
+[ 15%] Building CXX object common/CMakeFiles/common.dir/lowpassdct.cpp.o
+[ 17%] Building CXX object encoder/CMakeFiles/encoder.dir/slicetype.cpp.o
+[ 19%] Building CXX object common/CMakeFiles/common.dir/ipfilter.cpp.o
+[ 21%] Building CXX object encoder/CMakeFiles/encoder.dir/frameencoder.cpp.o
+[ 23%] Building CXX object encoder/CMakeFiles/encoder.dir/framefilter.cpp.o
+[ 25%] Building CXX object common/CMakeFiles/common.dir/intrapred.cpp.o
+[ 27%] Building CXX object encoder/CMakeFiles/encoder.dir/level.cpp.o
+[ 29%] Building CXX object encoder/CMakeFiles/encoder.dir/nal.cpp.o
+[ 31%] Building CXX object encoder/CMakeFiles/encoder.dir/sei.cpp.o
+[ 33%] Building CXX object encoder/CMakeFiles/encoder.dir/sao.cpp.o
+[ 35%] Building CXX object encoder/CMakeFiles/encoder.dir/entropy.cpp.o
+[ 37%] Building CXX object common/CMakeFiles/common.dir/loopfilter.cpp.o
+[ 39%] Building CXX object encoder/CMakeFiles/encoder.dir/dpb.cpp.o
+[ 41%] Building CXX object common/CMakeFiles/common.dir/constants.cpp.o
+[ 43%] Building CXX object encoder/CMakeFiles/encoder.dir/ratecontrol.cpp.o
+[ 45%] Building CXX object encoder/CMakeFiles/encoder.dir/reference.cpp.o
+[ 47%] Building CXX object common/CMakeFiles/common.dir/cpu.cpp.o
+[ 49%] Building CXX object common/CMakeFiles/common.dir/version.cpp.o
+[ 50%] Building CXX object encoder/CMakeFiles/encoder.dir/encoder.cpp.o
+[ 52%] Building CXX object encoder/CMakeFiles/encoder.dir/api.cpp.o
+/kaggle/working/prism-vcm/gate0/src/x265-stock/source/encoder/ratecontrol.cpp: In member function 'int x265::RateControl::writeRateControlFrameStats(x265::Frame*, x265::RateControlEntry*)':
+/kaggle/working/prism-vcm/gate0/src/x265-stock/source/encoder/ratecontrol.cpp:3025:36: warning: '~' directive writing 1 byte into a region of size between 0 and 127 [-Wformat-overflow=]
+ 3025 |             sprintf(deltaPOC, "%s%d~", deltaPOC, rpsWriter->deltaPOC[i]);
+      |                                    ^
+In file included from /usr/include/stdio.h:980,
+                 from /usr/include/c++/13/cstdio:42,
+                 from /kaggle/working/prism-vcm/gate0/src/x265-stock/source/common/common.h:33,
+                 from /kaggle/working/prism-vcm/gate0/src/x265-stock/source/encoder/ratecontrol.cpp:30:
+In function 'int sprintf(char*, const char*, ...)',
+    inlined from 'int x265::RateControl::writeRateControlFrameStats(x265::Frame*, x265::RateControlEntry*)' at /kaggle/working/prism-vcm/gate0/src/x265-stock/source/encoder/ratecontrol.cpp:3025:20:
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:30:34: note: '__builtin___sprintf_chk' output between 3 and 140 bytes into a destination of size 128
+   30 |   return __builtin___sprintf_chk (__s, __USE_FORTIFY_LEVEL - 1,
+      |          ~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   31 |                                   __glibc_objsize (__s), __fmt,
+      |                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   32 |                                   __va_arg_pack ());
+      |                                   ~~~~~~~~~~~~~~~~~
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:30:34: warning: '__builtin___sprintf_chk' argument 5 overlaps destination object 'deltaPOC' [-Wrestrict]
+/kaggle/working/prism-vcm/gate0/src/x265-stock/source/encoder/ratecontrol.cpp: In member function 'int x265::RateControl::writeRateControlFrameStats(x265::Frame*, x265::RateControlEntry*)':
+/kaggle/working/prism-vcm/gate0/src/x265-stock/source/encoder/ratecontrol.cpp:3016:14: note: destination object referenced by 'restrict'-qualified argument 1 was declared here
+ 3016 |         char deltaPOC[128];
+      |              ^~~~~~~~
+/kaggle/working/prism-vcm/gate0/src/x265-stock/source/encoder/ratecontrol.cpp:3026:33: warning: '~' directive writing 1 byte into a region of size between 0 and 39 [-Wformat-overflow=]
+ 3026 |             sprintf(bUsed, "%s%d~", bUsed, rpsWriter->bUsed[i]);
+      |                                 ^
+In function 'int sprintf(char*, const char*, ...)',
+    inlined from 'int x265::RateControl::writeRateControlFrameStats(x265::Frame*, x265::RateControlEntry*)' at /kaggle/working/prism-vcm/gate0/src/x265-stock/source/encoder/ratecontrol.cpp:3026:20:
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:30:34: note: '__builtin___sprintf_chk' output between 3 and 42 bytes into a destination of size 40
+   30 |   return __builtin___sprintf_chk (__s, __USE_FORTIFY_LEVEL - 1,
+      |          ~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   31 |                                   __glibc_objsize (__s), __fmt,
+      |                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   32 |                                   __va_arg_pack ());
+      |                                   ~~~~~~~~~~~~~~~~~
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:30:34: warning: '__builtin___sprintf_chk' argument 5 overlaps destination object 'bUsed' [-Wrestrict]
+/kaggle/working/prism-vcm/gate0/src/x265-stock/source/encoder/ratecontrol.cpp: In member function 'int x265::RateControl::writeRateControlFrameStats(x265::Frame*, x265::RateControlEntry*)':
+/kaggle/working/prism-vcm/gate0/src/x265-stock/source/encoder/ratecontrol.cpp:3017:14: note: destination object referenced by 'restrict'-qualified argument 1 was declared here
+ 3017 |         char bUsed[40];
+      |              ^~~~~
+[ 54%] Building CXX object common/CMakeFiles/common.dir/threading.cpp.o
+[ 56%] Building CXX object encoder/CMakeFiles/encoder.dir/weightPrediction.cpp.o
+[ 58%] Building CXX object common/CMakeFiles/common.dir/threadpool.cpp.o
+[ 60%] Building CXX object common/CMakeFiles/common.dir/wavefront.cpp.o
+[ 62%] Building CXX object common/CMakeFiles/common.dir/md5.cpp.o
+[ 64%] Building CXX object common/CMakeFiles/common.dir/bitstream.cpp.o
+[ 66%] Building CXX object common/CMakeFiles/common.dir/yuv.cpp.o
+[ 68%] Building CXX object common/CMakeFiles/common.dir/shortyuv.cpp.o
+[ 70%] Building CXX object common/CMakeFiles/common.dir/picyuv.cpp.o
+[ 72%] Building CXX object common/CMakeFiles/common.dir/common.cpp.o
+[ 74%] Building CXX object common/CMakeFiles/common.dir/param.cpp.o
+[ 76%] Building CXX object common/CMakeFiles/common.dir/frame.cpp.o
+[ 78%] Building CXX object common/CMakeFiles/common.dir/framedata.cpp.o
+[ 80%] Building CXX object common/CMakeFiles/common.dir/cudata.cpp.o
+[ 80%] Built target encoder
+[ 82%] Building CXX object common/CMakeFiles/common.dir/slice.cpp.o
+[ 84%] Building CXX object common/CMakeFiles/common.dir/lowres.cpp.o
+[ 86%] Building CXX object common/CMakeFiles/common.dir/piclist.cpp.o
+[ 88%] Building CXX object common/CMakeFiles/common.dir/predict.cpp.o
+[ 90%] Building CXX object common/CMakeFiles/common.dir/scalinglist.cpp.o
+[ 92%] Building CXX object common/CMakeFiles/common.dir/quant.cpp.o
+[ 94%] Building CXX object common/CMakeFiles/common.dir/deblock.cpp.o
+[ 96%] Building CXX object common/CMakeFiles/common.dir/scaler.cpp.o
+[ 96%] Built target common
+[ 98%] Linking CXX static library libx265.a
+[100%] Linking CXX shared library libx265.so
+[100%] Built target x265-static
+[100%] Built target x265-shared
+-- Install configuration: "Release"
+-- Installing: /kaggle/working/prism-vcm/gate0/build/stock/x265/install/lib/libx265.a
+-- Installing: /kaggle/working/prism-vcm/gate0/build/stock/x265/install/include/x265.h
+-- Installing: /kaggle/working/prism-vcm/gate0/build/stock/x265/install/include/x265_config.h
+-- Installing: /kaggle/working/prism-vcm/gate0/build/stock/x265/install/lib/libx265.so.199
+-- Installing: /kaggle/working/prism-vcm/gate0/build/stock/x265/install/lib/libx265.so
+-- Installing: /kaggle/working/prism-vcm/gate0/build/stock/x265/install/lib/pkgconfig/x265.pc
+
+[GATE0 STEP] configure_stock_shim
+-- The C compiler identification is GNU 13.3.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/gcc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Configuring done (0.2s)
+-- Generating done (0.0s)
+-- Build files have been written to: /kaggle/working/prism-vcm/gate0/build/stock/shim
+
+[GATE0 STEP] build_stock_shim
+[ 50%] Building C object CMakeFiles/prism_x265.dir/x265_shim.c.o
+[100%] Linking C shared library libprism_x265.so
+[100%] Built target prism_x265
+
+[GATE0 STEP] clone_HM_16.2
+Cloning into '/kaggle/working/prism-vcm/gate0/src/HM'...
+Note: switching to '41801c786b2fb37dafc779f824b1f62fbe713bbe'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+SOURCE https://vcgit.hhi.fraunhofer.de/jvet/HM.git tag=HM-16.2 commit=41801c786b2fb37dafc779f824b1f62fbe713bbe
+
+[GATE0 STEP] build_HM_decoder
+
+[GATE0 STEP] build_HM_TLibCommon
+make: Entering directory '/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon'
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/Debug.r.d -MT ./objects/Debug.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/Debug.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/Debug.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComPicYuv.r.d -MT ./objects/TComPicYuv.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComPicYuv.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComPicYuv.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComYuv.r.d -MT ./objects/TComYuv.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComYuv.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComYuv.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/ContextModel.r.d -MT ./objects/ContextModel.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/ContextModel.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/ContextModel.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/ContextModel3DBuffer.r.d -MT ./objects/ContextModel3DBuffer.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/ContextModel3DBuffer.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.cpp
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComPicYuv.cpp: In member function 'Void TComPicYuv::destroy()':
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComPicYuv.cpp:149:5: warning: this 'if' clause does not guard... [-Wmisleading-indentation]
+  149 |     if (m_ctuOffsetInBuffer[chan]) delete[] m_ctuOffsetInBuffer[chan]; m_ctuOffsetInBuffer[chan] = NULL;
+      |     ^~
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComPicYuv.cpp:149:72: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the 'if'
+  149 |     if (m_ctuOffsetInBuffer[chan]) delete[] m_ctuOffsetInBuffer[chan]; m_ctuOffsetInBuffer[chan] = NULL;
+      |                                                                        ^~~~~~~~~~~~~~~~~~~
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComPicYuv.cpp:150:5: warning: this 'if' clause does not guard... [-Wmisleading-indentation]
+  150 |     if (m_subCuOffsetInBuffer[chan]) delete[] m_subCuOffsetInBuffer[chan]; m_subCuOffsetInBuffer[chan] = NULL;
+      |     ^~
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComPicYuv.cpp:150:76: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the 'if'
+  150 |     if (m_subCuOffsetInBuffer[chan]) delete[] m_subCuOffsetInBuffer[chan]; m_subCuOffsetInBuffer[chan] = NULL;
+      |                                                                            ^~~~~~~~~~~~~~~~~~~~~
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.cpp:38:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h: In member function 'Void ContextModel3DBuffer::copyFrom(const ContextModel3DBuffer*)':
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h:92:13: warning: 'void* memcpy(void*, const void*, size_t)' writing to an object of non-trivially copyable type 'class ContextModel'; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+   92 |     ::memcpy( m_contextModel, src->m_contextModel, sizeof(ContextModel) * m_sizeXYZ );
+      |     ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h:46:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/ContextModel.h:57:7: note: 'class ContextModel' declared here
+   57 | class ContextModel
+      |       ^~~~~~~~~~~~
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/SEI.r.d -MT ./objects/SEI.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/SEI.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/SEI.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComCABACTables.r.d -MT ./objects/TComCABACTables.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComCABACTables.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComCABACTables.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComSampleAdaptiveOffset.r.d -MT ./objects/TComSampleAdaptiveOffset.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComSampleAdaptiveOffset.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComSampleAdaptiveOffset.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComBitStream.r.d -MT ./objects/TComBitStream.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComBitStream.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComBitStream.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComChromaFormat.r.d -MT ./objects/TComChromaFormat.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComChromaFormat.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComChromaFormat.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComDataCU.r.d -MT ./objects/TComDataCU.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComDataCU.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComDataCU.cpp
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComSampleAdaptiveOffset.cpp: In destructor 'virtual TComSampleAdaptiveOffset::~TComSampleAdaptiveOffset()':
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComSampleAdaptiveOffset.cpp:119:3: warning: this 'if' clause does not guard... [-Wmisleading-indentation]
+  119 |   if (m_signLineBuf1) delete[] m_signLineBuf1; m_signLineBuf1 = NULL;
+      |   ^~
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComSampleAdaptiveOffset.cpp:119:48: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the 'if'
+  119 |   if (m_signLineBuf1) delete[] m_signLineBuf1; m_signLineBuf1 = NULL;
+      |                                                ^~~~~~~~~~~~~~
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComSampleAdaptiveOffset.cpp:120:3: warning: this 'if' clause does not guard... [-Wmisleading-indentation]
+  120 |   if (m_signLineBuf2) delete[] m_signLineBuf2; m_signLineBuf2 = NULL;
+      |   ^~
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComSampleAdaptiveOffset.cpp:120:48: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the 'if'
+  120 |   if (m_signLineBuf2) delete[] m_signLineBuf2; m_signLineBuf2 = NULL;
+      |                                                ^~~~~~~~~~~~~~
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComSampleAdaptiveOffset.cpp: In member function 'Void TComSampleAdaptiveOffset::offsetBlock(ComponentID, Int, Int*, Pel*, Pel*, Int, Int, Int, Int, Bool, Bool, Bool, Bool, Bool, Bool, Bool, Bool)':
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComSampleAdaptiveOffset.cpp:317:5: warning: this 'if' clause does not guard... [-Wmisleading-indentation]
+  317 |     if (m_signLineBuf1) delete[] m_signLineBuf1; m_signLineBuf1 = NULL;
+      |     ^~
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComSampleAdaptiveOffset.cpp:317:50: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the 'if'
+  317 |     if (m_signLineBuf1) delete[] m_signLineBuf1; m_signLineBuf1 = NULL;
+      |                                                  ^~~~~~~~~~~~~~
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComSampleAdaptiveOffset.cpp:320:5: warning: this 'if' clause does not guard... [-Wmisleading-indentation]
+  320 |     if (m_signLineBuf2) delete[] m_signLineBuf2; m_signLineBuf2 = NULL;
+      |     ^~
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComSampleAdaptiveOffset.cpp:320:50: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the 'if'
+  320 |     if (m_signLineBuf2) delete[] m_signLineBuf2; m_signLineBuf2 = NULL;
+      |                                                  ^~~~~~~~~~~~~~
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComLoopFilter.r.d -MT ./objects/TComLoopFilter.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComLoopFilter.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComLoopFilter.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComMotionInfo.r.d -MT ./objects/TComMotionInfo.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComMotionInfo.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComMotionInfo.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComPattern.r.d -MT ./objects/TComPattern.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComPattern.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComPattern.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComPic.r.d -MT ./objects/TComPic.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComPic.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComPic.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComPicSym.r.d -MT ./objects/TComPicSym.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComPicSym.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComPicSym.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComPicYuvMD5.r.d -MT ./objects/TComPicYuvMD5.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComPicYuvMD5.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComPicYuvMD5.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComPrediction.r.d -MT ./objects/TComPrediction.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComPrediction.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComPrediction.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComRdCost.r.d -MT ./objects/TComRdCost.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComRdCost.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComRdCost.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComRom.r.d -MT ./objects/TComRom.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComRom.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComRom.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComSlice.r.d -MT ./objects/TComSlice.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComSlice.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComSlice.cpp
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibEncoder/TEncSbac.h:48,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComSlice.cpp:41:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h: In member function 'Void ContextModel3DBuffer::copyFrom(const ContextModel3DBuffer*)':
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h:92:13: warning: 'void* memcpy(void*, const void*, size_t)' writing to an object of non-trivially copyable type 'class ContextModel'; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+   92 |     ::memcpy( m_contextModel, src->m_contextModel, sizeof(ContextModel) * m_sizeXYZ );
+      |     ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibEncoder/TEncSbac.h:47:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/ContextModel.h:57:7: note: 'class ContextModel' declared here
+   57 | class ContextModel
+      |       ^~~~~~~~~~~~
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComTrQuant.r.d -MT ./objects/TComTrQuant.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComTrQuant.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComTrQuant.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComTU.r.d -MT ./objects/TComTU.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComTU.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComTU.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComInterpolationFilter.r.d -MT ./objects/TComInterpolationFilter.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComInterpolationFilter.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComInterpolationFilter.cpp
+gcc -c -MMD -MF ./objects/libmd5.r.d -MT ./objects/libmd5.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/libmd5.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/libmd5/libmd5.c
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComWeightPrediction.r.d -MT ./objects/TComWeightPrediction.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComWeightPrediction.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComWeightPrediction.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TComRdCostWeightPrediction.r.d -MT ./objects/TComRdCostWeightPrediction.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib -I../../../../source/Lib/TLibCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TComRdCostWeightPrediction.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon/../../../../source/Lib/TLibCommon/TComRdCostWeightPrediction.cpp
+ar -crs ../../../../lib/libTLibCommonStatic.a ./objects/Debug.r.o ./objects/TComPicYuv.r.o ./objects/TComYuv.r.o ./objects/ContextModel.r.o ./objects/ContextModel3DBuffer.r.o ./objects/SEI.r.o ./objects/TComCABACTables.r.o ./objects/TComSampleAdaptiveOffset.r.o ./objects/TComBitStream.r.o ./objects/TComChromaFormat.r.o ./objects/TComDataCU.r.o ./objects/TComLoopFilter.r.o ./objects/TComMotionInfo.r.o ./objects/TComPattern.r.o ./objects/TComPic.r.o ./objects/TComPicSym.r.o ./objects/TComPicYuvMD5.r.o ./objects/TComPrediction.r.o ./objects/TComRdCost.r.o ./objects/TComRom.r.o ./objects/TComSlice.r.o ./objects/TComTrQuant.r.o ./objects/TComTU.r.o ./objects/TComInterpolationFilter.r.o ./objects/libmd5.r.o ./objects/TComWeightPrediction.r.o ./objects/TComRdCostWeightPrediction.r.o
+make: Leaving directory '/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibCommon'
+
+[GATE0 STEP] build_HM_TLibVideoIO
+make: Entering directory '/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibVideoIO'
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TVideoIOYuv.r.d -MT ./objects/TVideoIOYuv.r.o -fPIC -DMSYS_LINUX -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -DMSYS_UNIX_LARGEFILE -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibVideoIO/../../../../source/Lib -I../../../../source/Lib/TLibVideoIO -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TVideoIOYuv.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibVideoIO/../../../../source/Lib/TLibVideoIO/TVideoIOYuv.cpp
+ar -crs ../../../../lib/libTLibVideoIOStatic.a ./objects/TVideoIOYuv.r.o
+make: Leaving directory '/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibVideoIO'
+
+[GATE0 STEP] build_HM_TLibDecoder
+make: Entering directory '/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder'
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/AnnexBread.r.d -MT ./objects/AnnexBread.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib -I../../../../source/Lib/TLibDecoder -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/AnnexBread.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/AnnexBread.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/NALread.r.d -MT ./objects/NALread.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib -I../../../../source/Lib/TLibDecoder -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/NALread.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/NALread.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/SEIread.r.d -MT ./objects/SEIread.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib -I../../../../source/Lib/TLibDecoder -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/SEIread.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/SEIread.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/SyntaxElementParser.r.d -MT ./objects/SyntaxElementParser.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib -I../../../../source/Lib/TLibDecoder -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/SyntaxElementParser.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/SyntaxElementParser.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TDecBinCoderCABAC.r.d -MT ./objects/TDecBinCoderCABAC.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib -I../../../../source/Lib/TLibDecoder -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TDecBinCoderCABAC.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecBinCoderCABAC.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TDecCAVLC.r.d -MT ./objects/TDecCAVLC.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib -I../../../../source/Lib/TLibDecoder -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TDecCAVLC.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecCAVLC.cpp
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/SEIread.cpp: In member function 'Void SEIReader::xParseSEITimeCode(SEITimeCode&, UInt, std::ostream*)':
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/SEIread.cpp:926:13: warning: this 'if' clause does not guard... [-Wmisleading-indentation]
+  926 |             if(currentTimeSet.hoursFlag)
+      |             ^~
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/SEIread.cpp:927:84: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the 'if'
+  927 |               sei_read_code( pDecodedMessageOutputStream, 5, code, "hours_value"); currentTimeSet.hoursValue = code;
+      |                                                                                    ^~~~~~~~~~~~~~
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TDecCu.r.d -MT ./objects/TDecCu.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib -I../../../../source/Lib/TLibDecoder -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TDecCu.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecCu.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TDecEntropy.r.d -MT ./objects/TDecEntropy.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib -I../../../../source/Lib/TLibDecoder -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TDecEntropy.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecEntropy.cpp
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.h:51,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSlice.h:50,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecCAVLC.cpp:40:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h: In member function 'Void ContextModel3DBuffer::copyFrom(const ContextModel3DBuffer*)':
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h:92:13: warning: 'void* memcpy(void*, const void*, size_t)' writing to an object of non-trivially copyable type 'class ContextModel'; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+   92 |     ::memcpy( m_contextModel, src->m_contextModel, sizeof(ContextModel) * m_sizeXYZ );
+      |     ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecBinCoder.h:41,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.h:48:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibCommon/ContextModel.h:57:7: note: 'class ContextModel' declared here
+   57 | class ContextModel
+      |       ^~~~~~~~~~~~
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TDecGop.r.d -MT ./objects/TDecGop.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib -I../../../../source/Lib/TLibDecoder -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TDecGop.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecGop.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TDecSbac.r.d -MT ./objects/TDecSbac.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib -I../../../../source/Lib/TLibDecoder -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TDecSbac.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.cpp
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.h:51,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSlice.h:50,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecGop.h:54,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecGop.cpp:38:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h: In member function 'Void ContextModel3DBuffer::copyFrom(const ContextModel3DBuffer*)':
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h:92:13: warning: 'void* memcpy(void*, const void*, size_t)' writing to an object of non-trivially copyable type 'class ContextModel'; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+   92 |     ::memcpy( m_contextModel, src->m_contextModel, sizeof(ContextModel) * m_sizeXYZ );
+      |     ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecBinCoder.h:41,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.h:48:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibCommon/ContextModel.h:57:7: note: 'class ContextModel' declared here
+   57 | class ContextModel
+      |       ^~~~~~~~~~~~
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.h:51,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.cpp:38:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h: In member function 'Void ContextModel3DBuffer::copyFrom(const ContextModel3DBuffer*)':
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h:92:13: warning: 'void* memcpy(void*, const void*, size_t)' writing to an object of non-trivially copyable type 'class ContextModel'; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+   92 |     ::memcpy( m_contextModel, src->m_contextModel, sizeof(ContextModel) * m_sizeXYZ );
+      |     ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecBinCoder.h:41,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.h:48:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibCommon/ContextModel.h:57:7: note: 'class ContextModel' declared here
+   57 | class ContextModel
+      |       ^~~~~~~~~~~~
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.cpp: In member function 'Void TDecSbac::xCopyContextsFrom(const TDecSbac*)':
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.cpp:1823:9: warning: 'void* memcpy(void*, const void*, size_t)' writing to an object of non-trivially copyable type 'class ContextModel'; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+ 1823 |   memcpy(m_contextModels, pSrc->m_contextModels, m_numContextModels*sizeof(m_contextModels[0]));
+      |   ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibCommon/ContextModel.h:57:7: note: 'class ContextModel' declared here
+   57 | class ContextModel
+      |       ^~~~~~~~~~~~
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TDecSlice.r.d -MT ./objects/TDecSlice.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib -I../../../../source/Lib/TLibDecoder -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TDecSlice.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSlice.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TDecTop.r.d -MT ./objects/TDecTop.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib -I../../../../source/Lib/TLibDecoder -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TDecTop.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecTop.cpp
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.h:51,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSlice.h:50,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSlice.cpp:38:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h: In member function 'Void ContextModel3DBuffer::copyFrom(const ContextModel3DBuffer*)':
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h:92:13: warning: 'void* memcpy(void*, const void*, size_t)' writing to an object of non-trivially copyable type 'class ContextModel'; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+   92 |     ::memcpy( m_contextModel, src->m_contextModel, sizeof(ContextModel) * m_sizeXYZ );
+      |     ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecBinCoder.h:41,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.h:48:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibCommon/ContextModel.h:57:7: note: 'class ContextModel' declared here
+   57 | class ContextModel
+      |       ^~~~~~~~~~~~
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.h:51,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSlice.h:50,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecGop.h:54,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecTop.h:48,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecTop.cpp:39:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h: In member function 'Void ContextModel3DBuffer::copyFrom(const ContextModel3DBuffer*)':
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h:92:13: warning: 'void* memcpy(void*, const void*, size_t)' writing to an object of non-trivially copyable type 'class ContextModel'; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+   92 |     ::memcpy( m_contextModel, src->m_contextModel, sizeof(ContextModel) * m_sizeXYZ );
+      |     ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecBinCoder.h:41,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.h:48:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder/../../../../source/Lib/TLibCommon/ContextModel.h:57:7: note: 'class ContextModel' declared here
+   57 | class ContextModel
+      |       ^~~~~~~~~~~~
+ar -crs ../../../../lib/libTLibDecoderStatic.a ./objects/AnnexBread.r.o ./objects/NALread.r.o ./objects/SEIread.r.o ./objects/SyntaxElementParser.r.o ./objects/TDecBinCoderCABAC.r.o ./objects/TDecCAVLC.r.o ./objects/TDecCu.r.o ./objects/TDecEntropy.r.o ./objects/TDecGop.r.o ./objects/TDecSbac.r.o ./objects/TDecSlice.r.o ./objects/TDecTop.r.o
+make: Leaving directory '/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TLibDecoder'
+
+[GATE0 STEP] build_HM_TAppCommon
+make: Entering directory '/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TAppCommon'
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/program_options_lite.r.d -MT ./objects/program_options_lite.r.o -fPIC -DMSYS_LINUX -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TAppCommon/../../../../source/Lib -I../../../../source/Lib/TAppCommon -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/program_options_lite.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TAppCommon/../../../../source/Lib/TAppCommon/program_options_lite.cpp
+ar -crs ../../../../lib/libTAppCommonStatic.a ./objects/program_options_lite.r.o
+make: Leaving directory '/kaggle/working/prism-vcm/gate0/src/HM/build/linux/lib/TAppCommon'
+
+[GATE0 STEP] build_HM_TAppDecoderStatic
+make: Entering directory '/kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder'
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/decmain.r.d -MT ./objects/decmain.r.o -fPIC -DMSYS_LINUX -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -DMSYS_UNIX_LARGEFILE -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib -I../../../../source/App/TAppDecoder  -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/decmain.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/App/TAppDecoder/decmain.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TAppDecCfg.r.d -MT ./objects/TAppDecCfg.r.o -fPIC -DMSYS_LINUX -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -DMSYS_UNIX_LARGEFILE -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib -I../../../../source/App/TAppDecoder  -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TAppDecCfg.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/App/TAppDecoder/TAppDecCfg.cpp
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -c -MMD -MF ./objects/TAppDecTop.r.d -MT ./objects/TAppDecTop.r.o -fPIC -DMSYS_LINUX -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -DMSYS_UNIX_LARGEFILE -I/kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib -I../../../../source/App/TAppDecoder  -Wall -Wshadow -Wno-sign-compare -Werror -O3 -Wuninitialized -o objects/TAppDecTop.r.o /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/App/TAppDecoder/TAppDecTop.cpp
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.h:51,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibDecoder/TDecSlice.h:50,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibDecoder/TDecGop.h:54,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibDecoder/TDecTop.h:48,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/App/TAppDecoder/TAppDecTop.h:48,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/App/TAppDecoder/TAppDecTop.cpp:44:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h: In member function 'Void ContextModel3DBuffer::copyFrom(const ContextModel3DBuffer*)':
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h:92:13: warning: 'void* memcpy(void*, const void*, size_t)' writing to an object of non-trivially copyable type 'class ContextModel'; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+   92 |     ::memcpy( m_contextModel, src->m_contextModel, sizeof(ContextModel) * m_sizeXYZ );
+      |     ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibDecoder/TDecBinCoder.h:41,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.h:48:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibCommon/ContextModel.h:57:7: note: 'class ContextModel' declared here
+   57 | class ContextModel
+      |       ^~~~~~~~~~~~
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.h:51,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibDecoder/TDecSlice.h:50,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibDecoder/TDecGop.h:54,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibDecoder/TDecTop.h:48,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/App/TAppDecoder/TAppDecTop.h:48,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/App/TAppDecoder/decmain.cpp:41:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h: In member function 'Void ContextModel3DBuffer::copyFrom(const ContextModel3DBuffer*)':
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibCommon/ContextModel3DBuffer.h:92:13: warning: 'void* memcpy(void*, const void*, size_t)' writing to an object of non-trivially copyable type 'class ContextModel'; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+   92 |     ::memcpy( m_contextModel, src->m_contextModel, sizeof(ContextModel) * m_sizeXYZ );
+      |     ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibDecoder/TDecBinCoder.h:41,
+                 from /kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibDecoder/TDecSbac.h:48:
+/kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder/../../../../source/Lib/TLibCommon/ContextModel.h:57:7: note: 'class ContextModel' declared here
+   57 | class ContextModel
+      |       ^~~~~~~~~~~~
+/kaggle/working/prism-vcm/gate0/build/hm/cxx -o ../../../../bin/TAppDecoderStatic -Wall  ./objects/decmain.r.o ./objects/TAppDecCfg.r.o ./objects/TAppDecTop.r.o -L../../../../lib  -ldl  -lpthread -lTLibDecoderStatic -lTLibCommonStatic -lTLibVideoIOStatic -lTAppCommonStatic
+make: Leaving directory '/kaggle/working/prism-vcm/gate0/src/HM/build/linux/app/TAppDecoder'
+
+[GATE0 STEP] pin_patched_build
+{
+  "library_sha256": "cd0b8590180bd27eeadf193e59890d159aa5a03ae9b64ea1065f69cd7e805be6",
+  "shim_sha256": "a2283f4df7e804788dfeb3405dcbc922fa9e9e43179119fe7a823e7b977b43e5",
+  "version": "3.5",
+  "abi": 199,
+  "picture_size": 16816,
+  "enable_assembly": false
+}
+
+[GATE0 STEP] pin_stock_build
+{
+  "library_sha256": "3aa75e2f483736deb3c533805a934feaa400353c8dd7b2427d6b6d236c465c09",
+  "shim_sha256": "94def4a3eaacb9b9f3dcf7f6734746823a8c57eccf71c7ffcefbaebdc5dfdf67",
+  "version": "3.5",
+  "abi": 199,
+  "picture_size": 16816,
+  "enable_assembly": false
+}
+
+[GATE0 STEP] record_provenance
+
+[GATE0 STEP] complete
+GATE 0 stack built. Pins identify artifacts; they do not imply a GATE 0 PASS.
+ARGV ["/usr/bin/python3", "/kaggle/working/prism-vcm/scripts/spike_gate0.py", "--output", "/kaggle/working/gate0_output/runs/20261031T235300Z-fd7c65de/evidence", "--pin", "/kaggle/working/prism-vcm/gate0/build-pin.json", "--stock-pin", "/kaggle/working/prism-vcm/gate0/stock-pin.json", "--stock-shim", "/kaggle/working/prism-vcm/gate0/build/stock/shim/libprism_x265.so", "--stock-library", "/kaggle/working/prism-vcm/gate0/build/stock/x265/install/lib/libx265.so", "--reference-command-json", "[\"/kaggle/working/prism-vcm/gate0/build/hm/bin/TAppDecoderStatic\", \"-b\", \"{bitstream}\"]"]
+GATE 0: QP=27 GOP=1 map=stock
+GATE 0: QP=27 GOP=1 map=same_binary_no_map
+GATE 0: QP=27 GOP=1 map=zero
+GATE 0: QP=27 GOP=1 map=plus6
+GATE 0: QP=27 GOP=1 map=minus6
+GATE 0: QP=27 GOP=1 map=checkerboard
+GATE 0: QP=27 GOP=10 map=stock
+GATE 0: QP=27 GOP=10 map=same_binary_no_map
+GATE 0: QP=27 GOP=10 map=zero
+GATE 0: QP=27 GOP=10 map=plus6
+GATE 0: QP=27 GOP=10 map=minus6
+GATE 0: QP=27 GOP=10 map=checkerboard
+{
+  "status": "FAIL",
+  "instrument": "x265_prism_residual_v1",
+  "mode": "full",
+  "gate0_complete": false,
+  "frames_per_encode": 10,
+  "encode_attempts": 12,
+  "encodes": 12,
+  "encoded_frames": 120,
+  "runs": [
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "stock",
+      "whole_bitstream_bytes": 7572355,
+      "per_frame_bits": [
+        11069112,
+        5480848,
+        5479768,
+        5472648,
+        5485192,
+        5475736,
+        5479040,
+        5484008,
+        5492064,
+        5474264
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "same_binary_no_map",
+      "whole_bitstream_bytes": 7572355,
+      "per_frame_bits": [
+        11069112,
+        5480848,
+        5479768,
+        5472648,
+        5485192,
+        5475736,
+        5479040,
+        5484008,
+        5492064,
+        5474264
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "zero",
+      "whole_bitstream_bytes": 7572355,
+      "per_frame_bits": [
+        11069112,
+        5480848,
+        5479768,
+        5472648,
+        5485192,
+        5475736,
+        5479040,
+        5484008,
+        5492064,
+        5474264
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "plus6",
+      "whole_bitstream_bytes": 5834122,
+      "per_frame_bits": [
+        8610496,
+        4215016,
+        4219472,
+        4203800,
+        4204712,
+        4210792,
+        4205056,
+        4201160,
+        4213536,
+        4202776
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "minus6",
+      "whole_bitstream_bytes": 9565918,
+      "per_frame_bits": [
+        13674864,
+        6991008,
+        6962376,
+        6887256,
+        6905872,
+        7028752,
+        7035696,
+        7054896,
+        6899072,
+        6901392
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "checkerboard",
+      "whole_bitstream_bytes": 7118487,
+      "per_frame_bits": [
+        11108904,
+        5045856,
+        5044232,
+        5134824,
+        5041720,
+        5037896,
+        5048192,
+        5068320,
+        5142608,
+        5089184
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 10,
+      "map": "stock",
+      "whole_bitstream_bytes": 7630973,
+      "per_frame_bits": [
+        11069136,
+        6175784,
+        5634608,
+        5051736,
+        6174208,
+        5632272,
+        5039936,
+        5042096,
+        6171216,
+        5037832
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 10,
+      "map": "same_binary_no_map",
+      "whole_bitstream_bytes": 7630973,
+      "per_frame_bits": [
+        11069136,
+        6175784,
+        5634608,
+        5051736,
+        6174208,
+        5632272,
+        5039936,
+        5042096,
+        6171216,
+        5037832
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 10,
+      "map": "zero",
+      "whole_bitstream_bytes": 7630973,
+      "per_frame_bits": [
+        11069136,
+        6175784,
+        5634608,
+        5051736,
+        6174208,
+        5632272,
+        5039936,
+        5042096,
+        6171216,
+        5037832
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 10,
+      "map": "plus6",
+      "whole_bitstream_bytes": 5714822,
+      "per_frame_bits": [
+        8610520,
+        4540848,
+        4205912,
+        3767256,
+        4564904,
+        4192984,
+        3752216,
+        3750536,
+        4563672,
+        3750768
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 10,
+      "map": "minus6",
+      "whole_bitstream_bytes": 9606621,
+      "per_frame_bits": [
+        13674888,
+        7462256,
+        7084776,
+        6678800,
+        7431856,
+        7072328,
+        6670992,
+        6670816,
+        7421984,
+        6665312
+      ]
+    },
+    {
+      "qp": 27,
+      "gop": 10,
+      "map": "checkerboard",
+      "whole_bitstream_bytes": 7393511,
+      "per_frame_bits": [
+        11108928,
+        5750360,
+        5485904,
+        4935736,
+        5781400,
+        5481952,
+        4926152,
+        4939640,
+        5785016,
+        4934040
+      ]
+    }
+  ],
+  "rc": "CQP",
+  "pin": {
+    "library_sha256": "cd0b8590180bd27eeadf193e59890d159aa5a03ae9b64ea1065f69cd7e805be6",
+    "shim_sha256": "a2283f4df7e804788dfeb3405dcbc922fa9e9e43179119fe7a823e7b977b43e5",
+    "version": "3.5",
+    "abi": 199,
+    "picture_size": 16816,
+    "enable_assembly": false
+  },
+  "stock_pin": {
+    "library_sha256": "3aa75e2f483736deb3c533805a934feaa400353c8dd7b2427d6b6d236c465c09",
+    "shim_sha256": "94def4a3eaacb9b9f3dcf7f6734746823a8c57eccf71c7ffcefbaebdc5dfdf67",
+    "version": "3.5",
+    "abi": 199,
+    "picture_size": 16816,
+    "enable_assembly": false
+  },
+  "rc_modes": [
+    "CRF",
+    "CRF"
+  ],
+  "frame_coverage": {
+    "zero": {
+      "0": {
+        "rows": 27285,
+        "residual": 27285,
+        "skip": 0
+      },
+      "3": {
+        "rows": 22092,
+        "residual": 22092,
+        "skip": 0
+      },
+      "2": {
+        "rows": 23292,
+        "residual": 23292,
+        "skip": 0
+      },
+      "1": {
+        "rows": 26769,
+        "residual": 26769,
+        "skip": 0
+      },
+      "7": {
+        "rows": 23361,
+        "residual": 23361,
+        "skip": 0
+      },
+      "5": {
+        "rows": 23589,
+        "residual": 23589,
+        "skip": 0
+      },
+      "4": {
+        "rows": 27069,
+        "residual": 27069,
+        "skip": 0
+      },
+      "6": {
+        "rows": 27192,
+        "residual": 27192,
+        "skip": 0
+      },
+      "9": {
+        "rows": 23580,
+        "residual": 23580,
+        "skip": 0
+      },
+      "8": {
+        "rows": 26949,
+        "residual": 26949,
+        "skip": 0
+      }
+    },
+    "plus6": {
+      "0": {
+        "rows": 23988,
+        "residual": 23988,
+        "skip": 0
+      },
+      "3": {
+        "rows": 22023,
+        "residual": 22023,
+        "skip": 0
+      },
+      "2": {
+        "rows": 26046,
+        "residual": 26046,
+        "skip": 0
+      },
+      "1": {
+        "rows": 26265,
+        "residual": 26265,
+        "skip": 0
+      },
+      "7": {
+        "rows": 24672,
+        "residual": 24672,
+        "skip": 0
+      },
+      "5": {
+        "rows": 26673,
+        "residual": 26673,
+        "skip": 0
+      },
+      "4": {
+        "rows": 26352,
+        "residual": 26352,
+        "skip": 0
+      },
+      "6": {
+        "rows": 26370,
+        "residual": 26370,
+        "skip": 0
+      },
+      "9": {
+        "rows": 24942,
+        "residual": 24942,
+        "skip": 0
+      },
+      "8": {
+        "rows": 26343,
+        "residual": 26343,
+        "skip": 0
+      }
+    },
+    "minus6": {
+      "0": {
+        "rows": 32400,
+        "residual": 32400,
+        "skip": 0
+      },
+      "3": {
+        "rows": 24768,
+        "residual": 24768,
+        "skip": 0
+      },
+      "2": {
+        "rows": 26229,
+        "residual": 26229,
+        "skip": 0
+      },
+      "1": {
+        "rows": 26682,
+        "residual": 26682,
+        "skip": 0
+      },
+      "7": {
+        "rows": 25416,
+        "residual": 25416,
+        "skip": 0
+      },
+      "5": {
+        "rows": 26661,
+        "residual": 26661,
+        "skip": 0
+      },
+      "4": {
+        "rows": 26988,
+        "residual": 26988,
+        "skip": 0
+      },
+      "6": {
+        "rows": 26460,
+        "residual": 26460,
+        "skip": 0
+      },
+      "9": {
+        "rows": 25086,
+        "residual": 25086,
+        "skip": 0
+      },
+      "8": {
+        "rows": 26307,
+        "residual": 26307,
+        "skip": 0
+      }
+    },
+    "checkerboard": {
+      "0": {
+        "rows": 25866,
+        "residual": 25866,
+        "skip": 0
+      },
+      "3": {
+        "rows": 17007,
+        "residual": 17007,
+        "skip": 0
+      },
+      "2": {
+        "rows": 22899,
+        "residual": 22899,
+        "skip": 0
+      },
+      "1": {
+        "rows": 16980,
+        "residual": 16980,
+        "skip": 0
+      },
+      "7": {
+        "rows": 19086,
+        "residual": 19086,
+        "skip": 0
+      },
+      "5": {
+        "rows": 23637,
+        "residual": 23637,
+        "skip": 0
+      },
+      "4": {
+        "rows": 16488,
+        "residual": 16488,
+        "skip": 0
+      },
+      "6": {
+        "rows": 16722,
+        "residual": 16722,
+        "skip": 0
+      },
+      "9": {
+        "rows": 19761,
+        "residual": 19761,
+        "skip": 0
+      },
+      "8": {
+        "rows": 16875,
+        "residual": 16875,
+        "skip": 0
+      }
+    }
+  },
+  "spatial_evidence": [
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "plus6",
+      "signed_median_qp_change": {
+        "per_frame": {
+          "0:1": {
+            "pairs": 20664,
+            "qg_spread": 7164,
+            "median": 6.0,
+            "state": "uncompensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 6.0
+          },
+          "1:1": {
+            "pairs": 7779,
+            "qg_spread": 4620,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "2:1": {
+            "pairs": 7887,
+            "qg_spread": 4620,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "3:1": {
+            "pairs": 7281,
+            "qg_spread": 4389,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "4:1": {
+            "pairs": 7644,
+            "qg_spread": 4521,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "5:1": {
+            "pairs": 7506,
+            "qg_spread": 4512,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "6:1": {
+            "pairs": 7536,
+            "qg_spread": 4482,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "7:1": {
+            "pairs": 7212,
+            "qg_spread": 4419,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "8:1": {
+            "pairs": 7836,
+            "qg_spread": 4578,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "9:1": {
+            "pairs": 7128,
+            "qg_spread": 4371,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          }
+        },
+        "frames_checked": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "1": 3.0
+      },
+      "bit_change_percent": -22.954985602233393
+    },
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "minus6",
+      "signed_median_qp_change": {
+        "per_frame": {
+          "0:-1": {
+            "pairs": 27285,
+            "qg_spread": 7740,
+            "median": 6.0,
+            "state": "uncompensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 6.0
+          },
+          "1:-1": {
+            "pairs": 11958,
+            "qg_spread": 5886,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "2:-1": {
+            "pairs": 10344,
+            "qg_spread": 5424,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "3:-1": {
+            "pairs": 8850,
+            "qg_spread": 5181,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "4:-1": {
+            "pairs": 9726,
+            "qg_spread": 5388,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "5:-1": {
+            "pairs": 12441,
+            "qg_spread": 5904,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "6:-1": {
+            "pairs": 12828,
+            "qg_spread": 5967,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "7:-1": {
+            "pairs": 13308,
+            "qg_spread": 6096,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "8:-1": {
+            "pairs": 9948,
+            "qg_spread": 5520,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "9:-1": {
+            "pairs": 9447,
+            "qg_spread": 5388,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          }
+        },
+        "frames_checked": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "-1": 4.0
+      },
+      "bit_change_percent": 26.32685604412366
+    },
+    {
+      "qp": 27,
+      "gop": 1,
+      "map": "checkerboard",
+      "signed_median_qp_change": {
+        "per_frame": {
+          "0:-1": {
+            "pairs": 13269,
+            "qg_spread": 3870,
+            "median": 6.0,
+            "state": "uncompensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 6.0
+          },
+          "1:-1": {
+            "pairs": 2883,
+            "qg_spread": 2235,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "2:-1": {
+            "pairs": 3330,
+            "qg_spread": 2355,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "3:-1": {
+            "pairs": 5379,
+            "qg_spread": 2607,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "4:-1": {
+            "pairs": 2916,
+            "qg_spread": 2289,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "5:-1": {
+            "pairs": 3036,
+            "qg_spread": 2208,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "6:-1": {
+            "pairs": 3558,
+            "qg_spread": 2433,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "7:-1": {
+            "pairs": 3381,
+            "qg_spread": 2298,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "8:-1": {
+            "pairs": 5655,
+            "qg_spread": 2769,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "9:-1": {
+            "pairs": 4275,
+            "qg_spread": 2436,
+            "median": 5.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 5.0,
+            "p90": 6.0
+          },
+          "0:1": {
+            "pairs": 8925,
+            "qg_spread": 3318,
+            "median": 6.0,
+            "state": "uncompensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 6.0
+          },
+          "1:1": {
+            "pairs": 2400,
+            "qg_spread": 2103,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          },
+          "2:1": {
+            "pairs": 2136,
+            "qg_spread": 1965,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          },
+          "3:1": {
+            "pairs": 2067,
+            "qg_spread": 1881,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          },
+          "4:1": {
+            "pairs": 2169,
+            "qg_spread": 2001,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          },
+          "5:1": {
+            "pairs": 2271,
+            "qg_spread": 2043,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          },
+          "6:1": {
+            "pairs": 2064,
+            "qg_spread": 1914,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          },
+          "7:1": {
+            "pairs": 2124,
+            "qg_spread": 2031,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          },
+          "8:1": {
+            "pairs": 2133,
+            "qg_spread": 1965,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          },
+          "9:1": {
+            "pairs": 2229,
+            "qg_spread": 1914,
+            "median": 7.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 7.0
+          }
+        },
+        "frames_checked": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "-1": 5.0,
+        "1": 7.0,
+        "separation": 2.0
+      },
+      "bit_change_percent": -5.993749632710033
+    },
+    {
+      "qp": 27,
+      "gop": 10,
+      "map": "plus6",
+      "signed_median_qp_change": {
+        "per_frame": {
+          "0:1": {
+            "pairs": 20664,
+            "qg_spread": 7164,
+            "median": 6.0,
+            "state": "uncompensated",
+            "fidelity": 1.0,
+            "p10": 6.0,
+            "p90": 6.0
+          },
+          "1:1": {
+            "pairs": 22338,
+            "qg_spread": 8046,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "2:1": {
+            "pairs": 19245,
+            "qg_spread": 7401,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 4.0
+          },
+          "3:1": {
+            "pairs": 16038,
+            "qg_spread": 7002,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "4:1": {
+            "pairs": 22500,
+            "qg_spread": 8043,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "5:1": {
+            "pairs": 19935,
+            "qg_spread": 7395,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 4.0
+          },
+          "6:1": {
+            "pairs": 22662,
+            "qg_spread": 8055,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "7:1": {
+            "pairs": 18318,
+            "qg_spread": 7143,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          },
+          "8:1": {
+            "pairs": 22404,
+            "qg_spread": 8058,
+            "median": 3.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 3.0,
+            "p90": 3.0
+          },
+          "9:1": {
+            "pairs": 18687,
+            "qg_spread": 7308,
+            "median": 4.0,
+            "state": "compensated",
+            "fidelity": 1.0,
+            "p10": 4.0,
+            "p90": 4.0
+          }
+        },
+        "frames_checked": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "1": 3.0
+      },
+      "bit_change_percent": -25.110179265475065
+    }
+  ],
+  "reason": "compensated frame 3 sign -1: median 3.000 outside feedback-state band (3.5, 6.0) (CONFIG v1.4 E-F0, AG-2/CX-1 esc#8)"
+}

@@ -1,0 +1,30 @@
+{
+  "prefix": "/kaggle/working/gate0_output/runs/20261031T235300Z-fd7c65de/evidence/qp27_gop10_stock",
+  "map": "stock",
+  "pin": {
+    "library_sha256": "3aa75e2f483736deb3c533805a934feaa400353c8dd7b2427d6b6d236c465c09",
+    "shim_sha256": "94def4a3eaacb9b9f3dcf7f6734746823a8c57eccf71c7ffcefbaebdc5dfdf67",
+    "version": "3.5",
+    "abi": 199,
+    "picture_size": 16816,
+    "enable_assembly": false
+  },
+  "config": {
+    "qp": 27,
+    "preset": "medium",
+    "aq_mode": 1,
+    "cutree": false,
+    "sao": true,
+    "qg_size": 16,
+    "gop": 10,
+    "bframes": 3,
+    "fps": 30,
+    "rc_mode": "CRF",
+    "crf": 20.0,
+    "bitrate_kbps": null,
+    "vbv_maxrate_kbps": null,
+    "vbv_bufsize_kbits": null
+  },
+  "width": 1920,
+  "height": 1080
+}
