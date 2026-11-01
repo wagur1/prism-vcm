@@ -1,4 +1,4 @@
-# Tier 1a Step 1 on Kaggle
+# Tier 1a on Kaggle
 
 Step 1 acquires 500 **train2017** images, freezes their SHA ledger, and caches
 **DINOv2-Base + SAM 2.1-Base** targets. It runs no Student, oracle, calibration,
@@ -138,7 +138,7 @@ remove only `.prepare.lock` / `teachers/.writer.lock` after confirming the previ
 process has stopped. The next run charges an unsettled job's full reservation.
 Never delete/reset `gpu_hours.json` to obtain a fresh budget.
 
-## Budget and Step 2
+## Step 1 budget and Step 2 inputs
 
 Initial **unmeasured planning projection** for one T4: 500 × 15 seconds/image ×
 1.5 safety factor + 300 seconds setup = **3.21 GPU-hours**. This deliberately
@@ -197,3 +197,184 @@ stack, 24 telemetry, 4 stdlib smoke). Python compilation, Python 3.10 grammar,
 Bash syntax and the six-image fixture dry run passed. NumPy/Pillow ran locally;
 PyTorch, real teacher inference and the repository's separate pytest suite were
 not available in this offline runtime. No network validation was performed.
+
+## Step 2 oracle kernel
+
+Run on a **CPU-only Linux kernel, 4 vCPU, accelerator None**, after restoring the
+entire Step 1 artifact tree. The default input is `/kaggle/working/tier1a`, with
+the authoritative ledger under the checkout. The ledger must contain exactly
+500 frozen train2017 entries and match the supplied `d96dde11` SHA prefix; pass
+the full frozen SHA with `--expected-ledger-sha` when available. This is an oracle
+labeling step, not the Tier 1a two-detector/video evaluation gate.
+
+Provision Python 3.10+, NumPy, Pillow, PyTorch CPU, ultralytics, pycocotools, and
+FFmpeg. The runner does not install model dependencies or download detector
+weights. Before the timed job, provision the official YOLO11-L checkpoint at
+`/kaggle/working/cache/weights/yolo11l.pt` (or use `--weights`). For example:
+
+```bash
+python3 -m pip install numpy Pillow ultralytics pycocotools
+mkdir -p /kaggle/working/cache/weights
+curl -fL https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11l.pt \
+  -o /kaggle/working/cache/weights/yolo11l.pt
+bash tier1a/run_step2_kaggle.sh
+```
+
+The checkpoint architecture, COCO80 class order, actual SHA and package versions
+are recorded. Inference uses CPU, batch 1, imgsz 640, conf .001, NMS IoU .7,
+max_det 100, no augmentation, and seed 0. Provisioning is separate from the
+timed kernel; include earlier GPU allocations in the persistent pilot account.
+
+The runner builds missing codec artifacts with **the existing**
+`gate0/build_gate0_stack.sh`, capped at four build jobs. It consumes `stack.json`,
+`build-pin.json`, and `stock-pin.json` with runtime SHA/ABI verification. The
+builder may access the network; all builds, including its HM dependency, count
+toward this job's wall/CPU account. A provisioned, network-free run is:
+
+```bash
+python3 -u tier1a/run_oracle_sweep.py --no-build \
+  --input /kaggle/working/tier1a \
+  --annotations /kaggle/working/cache/instances_train2017.json \
+  --weights /kaggle/working/cache/weights/yolo11l.pt
+```
+
+GPU usage defaults to the cumulative Step 1 `teachers/gpu_hours.json`, including
+any unsettled reservation. Supply `--prior-gpu-hours N` for a higher total if
+other pilot work consumed GPU time. The total cannot decrease or exceed 60.
+This job charges zero GPU-hours only on a CPU-only allocation; a visible GPU
+causes a setup failure rather than silently treating allocated GPU time as free.
+
+### Candidate and encode contract
+
+Each frame gets the following seed-0 integer QG16 maps (68x120 at 1080p):
+
+| Index | Proposal |
+| --- | --- |
+| 0 | All zero; reused as the rate/score reference |
+| 1 | Uniform +3 |
+| 2 | Uniform -3 |
+| 3 | SAM foreground -3, background +2 |
+| 4 | DINO cosine-saliency top 25% foreground -3, background +2 |
+| 5 | Row/column checkerboard +3/-3 |
+| 6 | Seeded PCG64: -3 with normalized-saliency probability, otherwise +3 |
+| 7 | SAM foreground -4, background +1 |
+
+Teacher caches are checked against source, ledger, selection and NPZ hashes.
+SAM masks are unioned. QG centers are inverse-letterboxed into the original
+source and then nearest-sampled in the recorded 518 center crop. Teacher-based
+maps use zero in unobserved regions, including letterbox padding; the partial
+bottom QG samples the last visible pixel center. DINO top-25% ranks observed
+QGs with stable row-major tie breaking and rounds the selected count upward.
+Randomness is seeded by seed 0 plus a SHA-derived sample ID, so traversal order
+and resume do not alter maps. Coincident proposals are recorded as such and
+still individually encoded; the generator never invents different maps to hide
+empty-mask cases. Every map satisfies `abs(delta)<=6` and positive offsets <=4.
+
+Each candidate uses a fresh **single-frame** encoder through the proven
+`X265Encoder`/header-compiled `quantOffsets` shim: medium, CRF20, GOP1, bframes0,
+aq-mode1, aq-strength1, hevc-aq0, cutree0, QG16, SAO on, lookahead0, frame-threads1,
+pools none, WPP off, VBV off. Effective options and pins are retained. A separate
+process loads stock on the first frame only, preventing shared-SONAME aliasing.
+Its null-map bitstream must match the already encoded patched zero-map SHA.
+A failed identity check blocks the remaining sweep. There are no encode trials.
+
+FFmpeg must return exactly one YUV420p8 frame via stdout. RGB conversion uses
+BT.709 limited range, nearest chroma expansion and round/clamp to RGB8. Each
+reconstruction is saved as a PNG and passed to YOLO (BGR ndarray input, matching
+ultralytics' convention). Raw input/decode YUV stays in memory and anonymous
+pipes. Candidate PNGs are removed after the winner is copied; only decoded
+winner PNGs are retained, alongside bitstreams, rate logs and map NPZs.
+
+### Objective and council visibility
+
+**D convention:** per-image COCO bbox AP50, IoU=.50 only, 101 recall points,
+useCats=1, area=all, maxDets=100. It averages valid precision entries over COCO
+categories with non-ignored ground truth in that image. Absent classes are
+excluded, so false positives in absent classes do not reduce this score. Empty
+detections score zero when evaluable GT exists; images without evaluable GT
+FAIL. Crowd/ignore rules are pycocotools defaults. Predictions are transformed
+back from the decoded letterbox into original image coordinates and clipped.
+The full original **instances_train2017.json**, bound by the selection SHA, is
+required: prompt boxes in the selection are not complete COCO annotations.
+
+**J convention:** maximize `D + lambda_R * (R0/R)`, default lambda_R=.05.
+`R0` is candidate 0's whole-bitstream bits; every R includes headers. x265 CSV
+per-frame bits are a separate recorded measurement. Ties prefer the lower map
+index, and both winner and runner-up are retained. A failed candidate makes the
+whole frame FAIL; any available scores/rates/J remain in the table, with no
+partial winner.
+
+The report exposes these deviations to council:
+
+- The requested AP reward and inverse-rate utility differ from inherited CONFIG
+  C's minimized distortion plus `lambda*R/R0`. The existing generic oracle keeps
+  its original behavior; Step 2 shares validation and adds a separate ranking API.
+- Step 1 cached CLS/patch tokens, **not attention weights**. Candidate 4 uses
+  patch-to-CLS cosine similarity, explicitly named as a saliency proxy. No
+  synthetic attention claim or extra DINO forward pass is made.
+- Candidate 7 interprets the request as foreground -4/background +1.
+- New reconstructions are scored by the requested YOLO detector. DINO/SAM input
+  caches supply proposals; they are not claimed as reconstructed-image scores.
+- K=6 is an explicit exception to CONFIG C's K=8..16, and the requested 10-frame
+  planning pilot is shorter than CONFIG F's 200-image throughput prerequisite.
+
+### Timing, resume and reports
+
+The first ten frames are actual K=8 oracle work, retained without re-encoding.
+Their measured encoder and total encode/decode/PNG/detector times produce
+`projected_500x8_encode_hours` and `projected_500x8_wall_hours`; wall projection
+uses a 1.25 safety factor and also checks setup time. If the projection exceeds
+the available six-hour job, remaining frames use indices 0..5, dropping the
+random proposal and SAM -4/+1. The first ten K=8 labels remain valid and the
+mixed-K counts are explicit. If K=6 also exceeds the remaining allowance, the
+job stops honestly with pending frames and can resume in another session.
+No work is extrapolated from stub tests. A separate updated measurement is
+recorded after 200 processed images, with the number of fully measured PASS
+frames; it only satisfies the 200-image condition if at least 200 qualify.
+
+A Linux supervisor terminates the entire child process group before six hours,
+including a stuck build, codec or detector. Encoder calls have individual
+timeouts. Whole-working-directory storage is checked against 16 decimal GB.
+`cpu_hours.json` accumulates process and waited-child user/system CPU-hours;
+this is separate from wall-hours and the 60 GPU-hour ceiling. An interrupted
+unsettled job is conservatively charged its reserved 4-vCPU allowance on resume.
+Keep the account and labels across sessions. Never delete them to reset budgets.
+
+| Artifact under output (`tier1a/oracle` by default) | Contents |
+| --- | --- |
+| `oracle_labels.json` | Frozen contract, lambda, per-frame PASS/FAIL, map hash/K, winner/runner-up, full candidates and J table |
+| `oracle_sweep_report.json` | PASS/FAIL/pending counts, timing projections, CPU/GPU accounting, reductions, honesty/council items |
+| `encode_manifest.jsonl` | Every candidate and first-frame stock encode attempt, including failures |
+| `cpu_hours.json` | Persistent job reservations and cumulative CPU/wall accounting |
+| `frames/<id>/<binding>/candidate_maps.npz` | Exact candidate integer maps |
+| `frames/<id>/<binding>/candidate_<i>/` | Bitstream, CSV, worker options/result and log; temporary decoded PNG |
+| `winners/<id>.png` | Decoded oracle winner |
+| `../step2_report.json` | Same final report for downstream step conventions |
+
+Only matching candidate, raw-input, geometry and run-contract hashes are skipped.
+Both PASS and FAIL are durable; interrupted RUNNING entries become FAIL and are
+not silently retried. Changed candidate/input hashes are explicit refreshes,
+with old rows retained. Model/config/code changes require a separate output
+directory. Missing or corrupt winner PNGs FAIL without re-encoding. Writer locks
+may be removed manually only after confirming no previous process is running.
+
+Offline checks and optional real-codec smoke:
+
+```bash
+python3 -m unittest discover -s tests -p test_oracle_sweep.py -v
+python3 -m compileall -q tier1a prism/training tests/test_oracle_sweep.py
+bash -n tier1a/run_step2_kaggle.sh
+bash -n gate0/build_gate0_stack.sh
+python3 tier1a/run_oracle_sweep.py --codec-dry-run \
+  --output outputs/oracle_codec_dry_run
+```
+
+The smoke attempts two synthetic 64x64 frames x three candidates only when local
+GATE-0 binaries/pins exist; otherwise its JSON report says SKIP. It never builds,
+downloads, runs a detector, or creates oracle labels. A 64x64 smoke cannot supply
+a measured 500x8 1080p wall-clock projection; that number comes from the kernel's
+ten-frame pilot.
+
+Local Step 2 validation: **81 selected unittest checks passed**, Python and Bash
+syntax passed, and the codec smoke honestly skipped because the local binaries
+are absent. See [STEP2_VALIDATION.md](STEP2_VALIDATION.md) for scope and limits.

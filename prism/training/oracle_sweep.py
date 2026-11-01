@@ -10,6 +10,39 @@ from prism.data.splits import SplitLedger
 from .manifest import EncodeManifest
 
 
+def validate_candidate_maps(candidates: Sequence[np.ndarray], *,
+                            distinct: bool = True) -> list[np.ndarray]:
+    """Shared codec contract; proposals may coincide on empty teacher masks."""
+    maps = [np.asarray(candidate, dtype=np.float32) for candidate in candidates]
+    if not maps or any(m.ndim != 2 or m.shape != maps[0].shape for m in maps):
+        raise ValueError("Candidate maps must share one two-dimensional grid")
+    if distinct and len({m.tobytes() for m in maps}) != len(maps):
+        raise ValueError("Candidate maps must be distinct")
+    if any(not np.isfinite(m).all() or np.any(np.abs(m) > 6)
+           or not np.array_equal(m, np.rint(m)) for m in maps):
+        raise ValueError("Oracle candidates must satisfy the encoding contract")
+    return maps
+
+
+def rank_task_candidates(scores: Sequence[float], bits: Sequence[int],
+                         lambda_rate: float = .05) -> tuple[list[float], list[int]]:
+    """Tier 1a requested utility: MAXIMIZE AP50 + lambda * (zero-map bits / bits).
+
+    Council visibility: this differs from CONFIG C's MINIMIZED distortion +
+    lambda * bits / R0. Keep that original OracleSweep behavior unchanged.
+    Stable ties prefer the lower candidate index (zero-map first).
+    """
+    d, r = np.asarray(scores, dtype=float), np.asarray(bits, dtype=float)
+    if (d.ndim != 1 or not len(d) or d.shape != r.shape or not np.isfinite(d).all()
+            or np.any((d < 0) | (d > 1)) or not np.isfinite(r).all()
+            or np.any(r <= 0) or not np.isfinite(lambda_rate) or lambda_rate < 0):
+        raise ValueError("Require finite AP in [0,1], positive rates, lambda >= 0")
+    objective = d + lambda_rate * r[0] / r
+    if not np.isfinite(objective).all():
+        raise ValueError("Nonfinite oracle objective")
+    return objective.tolist(), sorted(range(len(d)), key=lambda i: (-objective[i], i))
+
+
 @dataclass(frozen=True)
 class OracleConfig:
     distortion_name: str
@@ -52,11 +85,7 @@ class OracleSweep:
             return old
         if len(candidates) != self.config.candidates:
             raise ValueError("Supply the locked number of feasible oracle candidate maps")
-        maps = [np.asarray(candidate, dtype=np.float32) for candidate in candidates]
-        if any(candidate.ndim != 2 or candidate.shape != maps[0].shape for candidate in maps):
-            raise ValueError("Candidate maps must share one two-dimensional grid")
-        if len({candidate.tobytes() for candidate in maps}) != len(maps):
-            raise ValueError("Candidate maps must be distinct")
+        maps = validate_candidate_maps(candidates)
         for candidate in maps:
             if (not np.isfinite(candidate).all() or np.any(np.abs(candidate) > 6) or
                     not np.array_equal(candidate, np.rint(candidate)) or not is_feasible(candidate)):
