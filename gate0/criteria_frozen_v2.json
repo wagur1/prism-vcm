@@ -1,0 +1,69 @@
+{
+  "version": "gate0-criteria-frozen-v2-20261101-esc10",
+  "metric": "net-effect: (final_qp - base_qp_at_cu)_offset - (final_qp - base_qp_at_cu)_zero, oriented by map sign",
+  "provenance": {
+    "telemetry_run": "kernel full v8 (20261101_150032, run 20261101T070047Z-d2063e4f)",
+    "council": "esc#10 (AG-2 ratified + ZC-2 freeze protocol; CX-1 physics on record esc#9)",
+    "physics": "CX-1: SATD weight 2^(-offset/6) -> plus deficit 0.58; observed stable across QP 27-47 and GOP 1/10, clipping 0%"
+  },
+  "frame_class_taxonomy": "FEEDBACK POSITION (ZC-2 esc#10): frame 0 = first/uncompensated; frames >= 1 = compensated - regardless of slice syntax (gop1 all-intra included)",
+  "bands_magnitude": {
+    "plus6": {
+      "first_frame": [
+        5.5,
+        6.5
+      ],
+      "compensated": [
+        4.9,
+        7.0
+      ],
+      "fidelity": 1.0
+    },
+    "minus6": {
+      "first_frame": [
+        5.5,
+        6.5
+      ],
+      "compensated": [
+        4.9,
+        7.0
+      ],
+      "fidelity": 1.0
+    },
+    "checkerboard": {
+      "first_frame": [
+        5.5,
+        6.5
+      ],
+      "compensated_per_direction": [
+        4.9,
+        7.2
+      ],
+      "fidelity": 0.98
+    }
+  },
+  "aggregate_floor_magnitude": 4.9,
+  "observed": {
+    "plus6": {
+      "I": 6.0,
+      "inter": 5.42,
+      "p10_p90": [
+        5.42,
+        6.42
+      ]
+    },
+    "minus6": {
+      "I": 6.0,
+      "inter": 6.4,
+      "p10_p90": [
+        5.4,
+        6.4
+      ]
+    },
+    "checkerboard_inter_dirs": [
+      5.23,
+      6.77
+    ]
+  },
+  "hard_lockout": "CONFIRMATORY #2 is FINAL: any out-of-band result = structural GATE 0 FAIL escalated to owner. No edits without new telemetry AND full-council vote."
+}

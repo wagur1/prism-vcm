@@ -57,6 +57,91 @@ def residual_trace(path: Path, width: int, height: int,
     return valid
 
 
+def _read_telemetry_cus(path: Path) -> dict[tuple[int, int, int], tuple[float, float, float]]:
+    """Read x265_prism_telemetry_v2 CU rows: (frame,x,y) -> (final_qp, base_qp_at_cu, requested_offset)."""
+    out: dict[tuple[int, int, int], tuple[float, float, float]] = {}
+    with path.open(newline="", encoding="utf-8") as stream:
+        for row in csv.DictReader(stream):
+            if row.get("record_type") != "cu" or row.get("skip") == "1" or row.get("has_residual") != "1":
+                continue
+            key = (int(row["frame"]), int(row["x"]), int(row["y"]))
+            out[key] = (float(row["final_qp"]), float(row["base_qp_at_cu"]),
+                        float(row["requested_offset"] or 0.0))
+    return out
+
+
+def verify_net_effect(zero_telemetry: Path, condition_telemetry: Path,
+                      offsets: np.ndarray, *,
+                      bands: dict[int, tuple[float, float]] | None = None,
+                      min_fidelity: float = 1.0,
+                      min_aggregate_median: float = 4.9,
+                      i_frames: set[int] | None = None) -> dict:
+    """CONFIG v1.5 criteria (AG-2 ratified esc#10): band the NET offset effect.
+
+    net CU effect = (final_qp - base_qp_at_cu) of the offset run minus the same
+    quantity of the zero run (cancels CRF base drift, CX-1 esc#8). Oriented by
+    map sign; band on |oriented median| per frame-class: frame 0 (uncompensated)
+    [5.5, 6.5]; frames >= 1 per-direction ratified bands (default plus [4.9, 7.0],
+    minus [4.9, 7.0], checkerboard [4.9, 7.2]). Sign fidelity per direction:
+    uniform 1.0, checkerboard >= 0.98. Aggregate |median| >= 4.9.
+    Frame classes follow feedback position (ZC-2 warning esc#10), not slice type.
+    """
+    intra = {0} if i_frames is None else set(i_frames)
+    zero_cus = _read_telemetry_cus(zero_telemetry)
+    cond_cus = _read_telemetry_cus(condition_telemetry)
+    shared = zero_cus.keys() & cond_cus.keys()
+    if not shared:
+        raise ValueError("No shared residual CUs between zero and condition telemetry")
+    signs = sorted({int(np.sign(v)) for row in offsets for v in row if int(np.sign(v))})
+    result: dict = {"metric": "net-effect", "per_frame": {}}
+    for sign in signs:
+        per_frame: dict[int, list[float]] = {}
+        fidelity_bad = 0
+        fidelity_total = 0
+        for key in shared:
+            frame, x, y = key
+            if int(np.sign(offsets[y // 16, x // 16])) != sign:
+                continue
+            net_zero = zero_cus[key][0] - zero_cus[key][1]
+            net_cond = cond_cus[key][0] - cond_cus[key][1]
+            oriented = sign * (net_cond - net_zero)
+            fidelity_total += 1
+            if oriented <= 0:
+                fidelity_bad += 1
+            per_frame.setdefault(frame, []).append(oriented)
+        if not fidelity_total:
+            raise ValueError(f"No oriented residual CUs for sign {sign}")
+        fidelity = 1.0 - fidelity_bad / fidelity_total
+        if fidelity < min_fidelity:
+            raise ValueError(
+                f"Sign-fidelity violation sign {sign}: {fidelity_bad}/{fidelity_total} "
+                f"CUs with net delta <= 0 (fidelity={fidelity:.4f} < {min_fidelity})")
+        for frame in sorted(per_frame):
+            entries = per_frame[frame]
+            median = float(np.median(entries))
+            kind = "I" if frame in intra else "inter"
+            if frame == 0:
+                band = (5.5, 6.5)
+            elif bands is not None and sign in bands:
+                band = bands[sign]
+            else:
+                band = (4.9, 7.0)
+            if not band[0] <= median <= band[1]:
+                raise ValueError(
+                    f"{kind} frame {frame} sign {sign}: |net| median {median:.3f} outside "
+                    f"v1.5 band {band} (CONFIG v1.5, AG-2 ratified esc#10)")
+            result["per_frame"][f"{frame}:{sign}"] = {
+                "pairs": len(entries), "median": median, "kind": kind,
+                "fidelity": fidelity}
+        aggregate = float(np.median([v for entries in per_frame.values() for v in entries]))
+        if abs(aggregate) < min_aggregate_median:
+            raise ValueError(
+                f"Aggregate net effect too weak for sign {sign}: "
+                f"|median|={abs(aggregate):.3f} < {min_aggregate_median} (CONFIG v1.5)")
+        result[str(sign)] = aggregate
+    return result
+
+
 def verify_spatial_effect(anchor: dict[tuple[int, int, int], float],
                           changed: dict[tuple[int, int, int], float],
                           offsets: np.ndarray, *,

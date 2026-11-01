@@ -215,11 +215,30 @@ def run_spike(output: Path, library: CodecBuild | X265Library, ffmpeg: str,
                     "minus6": ({-1: (3.5, 6.0)}, 1.0, None),
                     "checkerboard": ({1: (5.0, 8.5), -1: (3.5, 6.5)}, 0.98, 0.5),
                 }
+                # CONFIG v1.5 (AG-2 ratified esc#10): NET-EFFECT criteria from
+                # deep telemetry (CX-1 drift-cancelling metric). Falls back to the
+                # frozen raw verifier only when telemetry is absent.
+                band_profiles_v15 = {
+                    "plus6": ({1: (4.9, 7.0)}, 1.0),
+                    "minus6": ({-1: (4.9, 7.0)}, 1.0),
+                    "checkerboard": ({1: (4.9, 7.2), -1: (4.9, 7.2)}, 0.98),
+                }
+                i_frames_v15 = set(range(10)) if gop == 1 else {0}
                 for name in (("plus6",) if quick else ("plus6", "minus6", "checkerboard")):
-                    bands, min_fid, min_sep = band_profiles[name]
-                    evidence = verify_spatial_effect(traces["zero"], traces[name], maps[name],
-                                                     bands=bands, min_fidelity=min_fid,
-                                                     min_separation=min_sep)
+                    telemetry_path = prefix.with_suffix(".telemetry.csv")
+                    zero_telemetry_path = prefix.with_suffix(".csv").with_name(
+                        prefix.name.rsplit("_", 1)[0] + "_zero.telemetry.csv")
+                    bands_v15, min_fid = band_profiles_v15[name]
+                    if telemetry_path.is_file() and zero_telemetry_path.is_file():
+                        evidence = verify_net_effect(zero_telemetry_path, telemetry_path,
+                                                     maps[name], bands=bands_v15,
+                                                     min_fidelity=min_fid,
+                                                     i_frames=i_frames_v15)
+                    else:
+                        bands_v14, min_fid_v14, min_sep = band_profiles[name]
+                        evidence = verify_spatial_effect(traces["zero"], traces[name], maps[name],
+                                                         bands=bands_v14, min_fidelity=min_fid_v14,
+                                                         min_separation=min_sep)
                     report.setdefault("spatial_evidence", []).append({"qp": qp, "gop": gop,
                         "map": name, "signed_median_qp_change": evidence,
                         "bit_change_percent": 100 * (len(streams[name]) / len(streams["zero"]) - 1)})
