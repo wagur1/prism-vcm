@@ -112,7 +112,12 @@ git -C "$GATE/src/x265-stock" diff --exit-code HEAD
 
 step apply_x265_residual_patch
 PATCH="$GATE/x265_residual_patch.patch"
-if git -C "$GATE/src/x265" apply --reverse --check "$PATCH"; then
+TELEMETRY_PATCH="$GATE/x265_residual_telemetry.patch"
+# v2 reverse-check verifies the layered insertion sites on incremental builds.
+# v1 alone cannot reverse-check after v2 adjusts its mutex portability.
+if git -C "$GATE/src/x265" apply --reverse --check "$TELEMETRY_PATCH"; then
+    printf 'Residual + telemetry patches already applied.\n'
+elif git -C "$GATE/src/x265" apply --reverse --check "$PATCH"; then
     printf 'Patch already applied; retaining the source tree.\n'
 else
     git -C "$GATE/src/x265" diff --exit-code HEAD || die 'Source has unexpected/partial edits; inspect build_log.txt before restoring it.'
@@ -129,6 +134,14 @@ else
             die 'Patch failed. Partial edits/rejects are preserved for review; no build pin was emitted.'
         fi
     fi
+fi
+
+step apply_x265_telemetry_patch
+if git -C "$GATE/src/x265" apply --reverse --check "$TELEMETRY_PATCH"; then
+    printf 'Telemetry patch already applied; retaining the source tree.\n'
+else
+    git -C "$GATE/src/x265" apply --check "$TELEMETRY_PATCH" || die 'Telemetry patch check failed; source preserved for review.'
+    git -C "$GATE/src/x265" apply "$TELEMETRY_PATCH"
 fi
 
 NASM_ARGS=()
@@ -235,7 +248,8 @@ def commit(path):
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 stack = {
-    'instrument': 'x265_prism_residual_v1', 'patch_audit': 'council-reviewed 2026-11-01 (m_cuDepth fix; escalations/20261101_021216_verdict.md); verify at build time',
+    'instrument': 'x265_prism_telemetry_v2', 'residual_instrument': 'x265_prism_residual_v1',
+    'patch_audit': 'v2 local 3.5 build validated; see gate0/PATCH_AUDIT.md; council review pending',
     'enable_assembly': os.environ.get('PRISM_GATE0_ASSEMBLY', 'ON') == 'ON',
     'asm_decision_reason': os.environ.get('PRISM_GATE0_ASM_REASON', ''),
     'nasm_version': os.environ.get('PRISM_GATE0_NASM_VERSION', 'none'),
@@ -244,6 +258,8 @@ stack = {
     'stock_commit': commit(gate / 'src/x265-stock'),
     'hm_tag': 'HM-16.2', 'hm_commit': commit(gate / 'src/HM'),
     'patch_sha256': sha(gate / 'x265_residual_patch.patch'),
+    'telemetry_patch_sha256': sha(gate / 'x265_residual_telemetry.patch'),
+    'patch_order': ['x265_residual_patch.patch', 'x265_residual_telemetry.patch'],
     'hm_sha256': sha(gate / 'build/hm/bin/TAppDecoderStatic'),
     'hm_compiler_policy': {
         'source_tag': 'HM-16.2', 'source_diff': 'NONE',

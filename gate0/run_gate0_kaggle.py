@@ -47,6 +47,33 @@ def build_failure(log_path: Path, returncode: int, detail: str = "") -> dict:
             "reason": f"Build step {step} exited {returncode}. {detail}\nLog tail:\n{tail}"}
 
 
+def collect_and_calibrate(evidence: Path, run_dir: Path, env: dict[str, str],
+                         log: Path, commands: dict) -> None:
+    """Separate outcome: measurement errors never rewrite the frozen verdict."""
+    collection = [sys.executable, str(REPO / "scripts/spike_gate0.py"),
+                  "--output", str(evidence), "--pin", str(GATE / "build-pin.json"),
+                  "--collect-telemetry-only"]
+    proposal = evidence / "band_calibration_proposal.json"
+    calibration = [sys.executable, str(GATE / "calibrate_bands.py"), str(evidence),
+                   "--output", str(proposal)]
+    commands.update(telemetry_collection=collection, calibration=calibration)
+    status = {"measurement_only": True, "status": "ERROR"}
+    try:
+        for name in ("band_calibration_proposal.json", "band_calibration_proposal.net_effects.csv"):
+            (GATE / name).unlink(missing_ok=True)
+        status["collection_exit_code"] = run_logged(collection, env, log)
+        status["calibration_exit_code"] = run_logged(calibration, env, log)
+        if status["calibration_exit_code"] == 0 and proposal.is_file():
+            status.update(status="PROPOSAL", proposal=str(proposal))
+            # Latest local alias is informational only. The run retains its copy.
+            shutil.copyfile(proposal, GATE / proposal.name)
+            sidecar = proposal.with_suffix(".net_effects.csv")
+            shutil.copyfile(sidecar, GATE / sidecar.name)
+    except Exception as exc:
+        status["error"] = str(exc)
+    write_json(run_dir / "calibration_status.json", status)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("/kaggle/working/gate0_output"))
@@ -65,6 +92,7 @@ def main() -> int:
     env = os.environ.copy()
     env["GATE0_PYTHON"] = sys.executable
     env["PYTHONUNBUFFERED"] = "1"
+    env.setdefault("GATE0_RC", "CRF")  # CONFIG v1.4 primary mode; retain explicit overrides.
     env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(GATE / "build/python-deps"),
                                                     str(REPO), env.get("PYTHONPATH")]))
     build_command = ["bash", str(GATE / "build_gate0_stack.sh")]
@@ -85,7 +113,7 @@ def main() -> int:
             report = build_failure(build_log, code)
         else:
             for name in ("build-pin.json", "stock-pin.json", "stack.json",
-                         "x265_residual_patch.patch", "PATCH_AUDIT.md"):
+                         "x265_residual_patch.patch", "x265_residual_telemetry.patch", "PATCH_AUDIT.md"):
                 shutil.copyfile(GATE / name, run_dir / name)
                 shutil.copyfile(GATE / name, output / name)
             stack = json.loads((run_dir / "stack.json").read_text(encoding="utf-8"))
@@ -93,6 +121,7 @@ def main() -> int:
             env["PRISM_X265_LIBRARY"] = stack["library"]
             env["LD_LIBRARY_PATH"] = str(Path(stack["library"]).parent)
             env.pop("PRISM_X265_QP_TRACE", None)
+            env.pop("PRISM_X265_RC_TELEMETRY", None)  # workers set individual evidence paths
             # The harness sets these same two env vars to stock paths inside a
             # fresh stock worker, preventing same-SONAME loader aliasing.
             reference = [stack["reference_decoder"], "-b", "{bitstream}"]
@@ -107,7 +136,9 @@ def main() -> int:
             if args.quick:
                 command.append("--quick")
             commands.update({"spike": command, "environment": {
-                "PRISM_X265_SHIM": stack["shim"], "PRISM_X265_LIBRARY": stack["library"]},
+                "PRISM_X265_SHIM": stack["shim"], "PRISM_X265_LIBRARY": stack["library"],
+                "GATE0_RC": env["GATE0_RC"], "GATE0_CRF": env.get("GATE0_CRF", "20"),
+                "PRISM_X265_RC_TELEMETRY": "<evidence>/qp<QP>_gop<GOP>_<map>.telemetry.csv"},
                 "stock_worker_environment": {"PRISM_X265_SHIM": stack["stock_shim"],
                                              "PRISM_X265_LIBRARY": stack["stock_library"]}})
             write_json(run_dir / "commands.json", commands)
@@ -129,6 +160,8 @@ def main() -> int:
                     report.update(status="FAIL", gate0_complete=False,
                                   reason="Quick mode cannot report full GATE 0 PASS")
                     code = code or 1
+            if not args.quick:
+                collect_and_calibrate(evidence, run_dir, env, driver_log, commands)
     except Exception as exc:
         code = code or 1
         report = (build_failure(build_log, code, str(exc)) if phase == "build" else

@@ -26,3 +26,12 @@ Ghi nhận trung thực các kết quả âm — mỗi mục là một bài họ
 - Confirmatory run (frozen criteria e6d6516a): minus6@gop1 compensated median = 4.0 (PASS); minus6@gop10 frame-3 = 3.0 (FAIL floor 3.5). Cơ chế đúng (sign-fidelity 100%); độ sâu bù thay đổi theo cấu trúc GOP/feedback history.
 - **Bài học:** band hiệu chuẩn từ MỘT cấu hình GOP không transfer được sang cấu hình khác — đúng cảnh báo transferability của ZC-2 (esc#9). Deep telemetry (per-POC base QP) là con đường duy nhất để band bất biến theo cấu hình.
 - Kết quả FINAL theo hard-stop esc#9 — escalated to owner.
+
+## E-05: Deep telemetry workstream — owner approved 2026-11-01
+
+- **Authorization:** owner approved CX-1's telemetry-first workstream from esc#8/#9. Measurement and council proposals only; the criteria hard-lockout remains active. `gate0/criteria_frozen.json` SHA-256 stays `e6d6516a174b788dbaf17fabb930c8ed8be48d7843c5b91b3411d04d19b3def4`.
+- **Implementation:** layer instrumentation v2 after v1. Capture float pre-AQ RC base QP, rounded base, weighted SATD/blurred complexity, effective RC/qCompress/VBV, and final leaf-QG requested offsets, slice/CTU base and clipping. Match the completed v1/v2 leaf records by input PTS and pixel origin, separately recording POC and encode order.
+- **Analysis:** `gate0/calibrate_bands.py` subtracts each run's own pre-AQ base before comparing with zero, removing common RC-base drift. It emits explicit `PROPOSAL` intervals and direction asymmetry, separated by map condition, GOP class and nominal QP group, retaining existing gross floors. Nothing auto-applies or changes PASS/FAIL.
+- **Coverage:** FULL mode completes missing telemetry conditions after the frozen verifier stops, preserving the original result. QUICK records telemetry but skips calibration. The analyzer rejects partial matrices and v1/v2 mismatches.
+- **Validation:** CMake/GCC native static/shared build succeeded on the cached 3.5 source; native map/GOP, B-reordering/PTS, clipping, WPP and bit-identity probes passed. See `gate0/PATCH_AUDIT.md` and `gate0/VALIDATION.md` for exact scope.
+- **Limits:** current harness QP labels share a single `GATE0_CRF` setting; they must not be presented as a CRF sweep. Full content/grid generalization, independent decoder QP reconstruction, and council ratification remain outstanding. No revised criteria or GATE 0 PASS is claimed.

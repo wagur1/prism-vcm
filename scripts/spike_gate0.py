@@ -88,8 +88,11 @@ def encode_condition(prefix: Path, name: str, codec: CodecBuild | X265Library,
     # Each worker starts with its own loader search path, including the stock worker.
     env["LD_LIBRARY_PATH"] = str(codec.library_path.resolve().parent)
     env.pop("PRISM_X265_QP_TRACE", None)
+    env.pop("PRISM_X265_RC_TELEMETRY", None)
     if name != "stock":
         env["PRISM_X265_QP_TRACE"] = str(prefix.with_suffix(".trace.csv").resolve())
+    if name in ("zero", "plus6", "minus6", "checkerboard"):
+        env["PRISM_X265_RC_TELEMETRY"] = str(prefix.with_suffix(".telemetry.csv").resolve())
     log_path = prefix.with_suffix(".encode.log")
     with log_path.open("w", encoding="utf-8") as log:
         result = subprocess.run([sys.executable, str(Path(__file__).resolve()),
@@ -99,6 +102,34 @@ def encode_condition(prefix: Path, name: str, codec: CodecBuild | X265Library,
     if result.returncode or "x265_prism_residual_v1:" in log_text:
         tail = log_text[-6000:]
         raise RuntimeError(f"Encode {prefix.name} exited {result.returncode}:\n{tail}")
+
+
+def collect_remaining_telemetry(output: Path, library: CodecBuild | X265Library,
+                                width: int = 1920, height: int = 1080) -> dict:
+    """Finish measurement after the frozen verifier stops; never rerun its verdict.
+
+    Existing artifacts remain intact, including incomplete failed workers. Missing
+    conditions get fresh workers; all errors are recorded in a separate manifest.
+    """
+    collected, existing, errors = [], [], []
+    for qp in (27, 32, 37, 42, 47):
+        for gop in (1, 10):
+            cfg = EncoderConfig(qp=qp, crf=float(os.environ.get("GATE0_CRF", "20")),
+                                rc_mode=os.environ.get("GATE0_RC", "CQP"),
+                                gop=gop, bframes=0 if gop == 1 else 3)
+            for name in ("zero", "plus6", "minus6", "checkerboard"):
+                prefix = output / f"qp{qp}_gop{gop}_{name}"
+                if any(output.glob(prefix.name + ".*")):
+                    existing.append(prefix.name)
+                    continue
+                try:
+                    encode_condition(prefix, name, library, cfg, width, height)
+                    collected.append(prefix.name)
+                except Exception as exc:
+                    errors.append({"condition": prefix.name, "error": str(exc)})
+    result = {"measurement_only": True, "collected": collected, "existing": existing, "errors": errors}
+    (output / "telemetry_collection.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    return result
 
 
 def run_spike(output: Path, library: CodecBuild | X265Library, ffmpeg: str,
@@ -228,6 +259,8 @@ def main() -> int:
     parser.add_argument("--reference-command-json", help='HEVC reference argv JSON with {bitstream}')
     parser.add_argument("--quick", action="store_true", default=os.environ.get("GATE0_QUICK") == "1")
     parser.add_argument("--encode-job-json", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--collect-telemetry-only", action="store_true",
+                        help="Fill the full telemetry matrix without reading or writing the GATE verdict")
     args = parser.parse_args()
     if args.encode_job_json:
         encode_worker(json.loads(args.encode_job_json.read_text(encoding="utf-8")))
@@ -237,6 +270,9 @@ def main() -> int:
         shim, library_path = os.environ.get("PRISM_X265_SHIM"), os.environ.get("PRISM_X265_LIBRARY")
         library = read_build(Path(shim) if shim else None,
                              Path(library_path) if library_path else None, args.pin)
+        if args.collect_telemetry_only:
+            result = collect_remaining_telemetry(args.output, library)
+            return int(bool(result["errors"]))
         if not shutil.which(args.ffmpeg) or not args.reference_command_json:
             raise X265Unavailable("Both independent HEVC decoders are required")
         reference = json.loads(args.reference_command_json)
@@ -249,8 +285,12 @@ def main() -> int:
             stock = read_build(args.stock_shim, args.stock_library, args.stock_pin)
         report = run_spike(args.output, library, args.ffmpeg, reference, stock=stock, quick=args.quick)
     except X265Unavailable as exc:
+        if args.collect_telemetry_only:
+            raise
         report = {"status": "SKIP", "gate0_complete": False, "reason": str(exc)}
     except Exception as exc:
+        if args.collect_telemetry_only:
+            raise
         report = {"status": "FAIL", "gate0_complete": False, "reason": str(exc)}
     (args.output / "gate0.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report, indent=2))

@@ -1,0 +1,295 @@
+diff --git a/source/encoder/CMakeLists.txt b/source/encoder/CMakeLists.txt
+--- a/source/encoder/CMakeLists.txt
++++ b/source/encoder/CMakeLists.txt
+@@ -40,6 +40,7 @@
+     entropy.cpp entropy.h
+     dpb.cpp dpb.h
+     ratecontrol.cpp ratecontrol.h
++    prism_telemetry.cpp prism_telemetry.h
+     reference.cpp reference.h
+     encoder.cpp encoder.h
+     api.cpp
+diff --git a/source/encoder/frameencoder.cpp b/source/encoder/frameencoder.cpp
+--- a/source/encoder/frameencoder.cpp
++++ b/source/encoder/frameencoder.cpp
+@@ -31,6 +31,7 @@
+ 
+ #include "encoder.h"
+ #include "prism_residual_trace.h"
++#include "prism_telemetry.h"
+ #include "frameencoder.h"
+ #include "common.h"
+ #include "slicetype.h"
+@@ -2162,6 +2163,7 @@
+         m_done.wait();
+ 
+         x265_prism_residual_v1(*m_frame, *m_param);
++        prismTelemetryCUs(*m_frame, *m_param);
+         Frame *ret = m_frame;
+         m_frame = NULL;
+         output.takeContents(m_nalList);
+diff --git a/source/encoder/prism_residual_trace.h b/source/encoder/prism_residual_trace.h
+--- a/source/encoder/prism_residual_trace.h
++++ b/source/encoder/prism_residual_trace.h
+@@ -29,10 +29,11 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #if X265_DEPTH == 8
+-#include <pthread.h>
++#include "threading.h"
+ #endif
+ 
+ namespace X265_NS {
++static Lock prismResidualMutex;
+ static void x265_prism_residual_v1(const Frame& frame, const x265_param& param)
+ {
+ #if X265_DEPTH == 8
+@@ -40,13 +41,11 @@
+     if (!path || !path[0])
+         return;
+     // This header is included ONLY by frameencoder.cpp: one mutex per library.
+-    static pthread_mutex_t traceMutex = PTHREAD_MUTEX_INITIALIZER;
+-    pthread_mutex_lock(&traceMutex);
++    ScopedLock traceLock(prismResidualMutex);
+     FILE* trace = fopen(path, "a");
+     if (!trace)
+     {
+         perror("x265_prism_residual_v1: fopen");
+-        pthread_mutex_unlock(&traceMutex);
+         return; // Missing/incomplete evidence must fail the external gate.
+     }
+     bool failed = fseek(trace, 0, SEEK_END) != 0;
+@@ -102,7 +101,6 @@
+     if (failed)
+         fprintf(stderr, "x265_prism_residual_v1: incomplete trace frame %lld\n",
+                 (long long)frame.m_pts);
+-    pthread_mutex_unlock(&traceMutex);
+ #else
+     (void)frame;
+     (void)param;
+diff --git a/source/encoder/prism_telemetry.cpp b/source/encoder/prism_telemetry.cpp
+new file mode 100644
+--- /dev/null
++++ b/source/encoder/prism_telemetry.cpp
+@@ -0,0 +1,179 @@
++/* x265_prism_telemetry_v2. See PRISM-VCM gate0/PATCH_AUDIT.md.
++ * One CSV: record_type=frame (RC start) or cu (committed leaf at frame drain).
++ * No encoder state is changed. Environment must remain stable until drain.
++ */
++#include "prism_telemetry.h"
++#include "framedata.h"
++#include "cudata.h"
++#include "constants.h"
++#include "picyuv.h"
++#include "threading.h"
++#include <stdio.h>
++#include <stdlib.h>
++
++namespace X265_NS {
++// One lock shared by both writers and all encoder instances in this library.
++static Lock telemetryLock;
++
++static const char* telemetryPath()
++{
++#if X265_DEPTH == 8
++    const char* path = getenv("PRISM_X265_RC_TELEMETRY");
++    return path && path[0] ? path : NULL;
++#else
++    return NULL;
++#endif
++}
++
++static FILE* openTrace(const char* path)
++{
++    FILE* out = fopen(path, "a");
++    if (!out)
++    {
++        perror("x265_prism_telemetry_v2: fopen");
++        return NULL;
++    }
++    bool failed = fseek(out, 0, SEEK_END) != 0;
++    long size = ftell(out);
++    failed |= size < 0;
++    if (!failed && size == 0)
++        failed = fprintf(out, "record_type,frame,poc,encode_order,slice_type,base_qp_rc,qp_aq_offset_applied,weighted_satd_or_blurred_complexity,qCompress,rc_mode,x,y,requested_offset,final_qp,clipping_flag,base_qp_at_cu,base_qp_rc_rounded,weighted_satd,blurred_complexity,qpNoVbv,vbv_enabled,analysis_base_qp,qp_round_preclip,qp_after_config_clip,aq_offset_mean,qg_x,qg_y,qg_size,has_residual,skip\n") < 0;
++    if (failed)
++    {
++        fprintf(stderr, "x265_prism_telemetry_v2: header failure\n");
++        fclose(out);
++        return NULL;
++    }
++    return out;
++}
++
++static void closeTrace(FILE* out, bool failed)
++{
++    if (fflush(out) != 0) failed = true;
++    if (fclose(out) != 0) failed = true;
++    if (failed) fprintf(stderr, "x265_prism_telemetry_v2: incomplete trace\n");
++}
++
++static const char* rcName(const x265_param& p)
++{
++    return p.rc.rateControlMode == X265_RC_CRF ? "CRF" :
++           p.rc.rateControlMode == X265_RC_ABR ? "ABR" : "CQP";
++}
++
++static char sliceName(const Frame& f)
++{
++    return f.m_encData->m_slice->m_sliceType == I_SLICE ? 'I' :
++           f.m_encData->m_slice->m_sliceType == P_SLICE ? 'P' : 'B';
++}
++
++// Scope in which AQ can be recovered exactly before quantOffsets by subtraction.
++// Reject unsupported analysis instead of silently claiming reconstructed values.
++static bool supported(const x265_param& p)
++{
++    bool ok = p.rc.qgSize == 16 && !p.rc.hevcAq && !p.rc.cuTree &&
++              !p.bEnableRdRefine && !p.analysisLoad && !p.analysisMultiPassDistortion &&
++              !p.ctuDistortionRefine && !p.bCTUInfo;
++    if (!ok) fprintf(stderr, "x265_prism_telemetry_v2: unsupported AQ/refinement configuration\n");
++    return ok;
++}
++
++static void offsets(const Frame& f, const x265_param& p, uint32_t x, uint32_t y,
++                    uint32_t size, double& requested, double& aq)
++{
++    // Same visible/padded picture extent and stride as calculateQpforCuSize.
++    const uint32_t width = f.m_fencPic->m_picWidth;
++    const uint32_t height = f.m_fencPic->m_picHeight;
++    const uint32_t cols = (width + 15) / 16;
++    uint32_t count = 0;
++    requested = aq = 0;
++    for (uint32_t yy = y; yy < y + size && yy < height; yy += 16)
++        for (uint32_t xx = x; xx < x + size && xx < width; xx += 16)
++        {
++            uint32_t index = (yy / 16) * cols + xx / 16;
++            double req = f.m_quantOffsets ? f.m_quantOffsets[index] : 0;
++            requested += req;
++            // CQP disables AQ: the requested map is present but not applied.
++            if (p.rc.aqMode && f.m_lowres.qpAqOffset)
++                aq += f.m_lowres.qpAqOffset[index] - req;
++            count++;
++        }
++    if (count) { requested /= count; aq /= count; }
++}
++
++void prismTelemetryFrame(const Frame& f, const x265_param& p,
++                         const RateControlEntry& rce, int roundedQp)
++{
++    const char* path = telemetryPath();
++    if (!path) return; // no lock, traversal, allocation or I/O when disabled
++    if (!supported(p)) return;
++    ScopedLock lock(telemetryLock);
++    FILE* out = openTrace(path);
++    if (!out) return;
++    double requested, aq;
++    offsets(f, p, 0, 0, X265_MAX(f.m_fencPic->m_picWidth, f.m_fencPic->m_picHeight), requested, aq);
++    const double base = p.rc.rateControlMode == X265_RC_CQP ? roundedQp : f.m_encData->m_avgQpRc;
++    // lastSatd is consumed by RC for this picture; B QP also uses reference QPs.
++    // blurredComplexity is meaningful for non-B CRF/ABR, not B-reference QP.
++    bool blurred = p.rc.rateControlMode != X265_RC_CQP && rce.sliceType != B_SLICE;
++    double complexity = blurred ? rce.blurredComplexity : (double)rce.lastSatd;
++    bool failed = fprintf(out, "frame,%lld,%d,%d,%c,%.17g,%.17g,%.17g,%.17g,%s,,,,,,,",
++                          (long long)f.m_pts, f.m_poc, f.m_encodeOrder, sliceName(f),
++                          base, base + aq, complexity, p.rc.qCompress, rcName(p)) < 0;
++    failed |= fprintf(out, "%d,%lld,%.17g,%.17g,%d,,,,%.17g,,,,,\n", roundedQp,
++                      (long long)rce.lastSatd, blurred ? rce.blurredComplexity : 0.0,
++                      rce.qpNoVbv, !!p.rc.vbvBufferSize, aq) < 0;
++    closeTrace(out, failed);
++}
++
++void prismTelemetryCUs(const Frame& f, const x265_param& p)
++{
++    const char* path = telemetryPath();
++    if (!path) return;
++    if (!supported(p)) return;
++    ScopedLock lock(telemetryLock);
++    FILE* out = openTrace(path);
++    if (!out) return;
++    bool failed = false;
++    const uint32_t cols = (p.sourceWidth + p.maxCUSize - 1) / p.maxCUSize;
++    const uint32_t rows = (p.sourceHeight + p.maxCUSize - 1) / p.maxCUSize;
++    for (uint32_t addr = 0; !failed && addr < cols * rows; ++addr)
++    {
++        const CUData* ctu = f.m_encData->getPicCTU(addr);
++        for (uint32_t part = 0; part < ctu->m_numPartitions;)
++        {
++            const uint32_t x = ctu->m_cuPelX + g_zscanToPelX[part];
++            const uint32_t y = ctu->m_cuPelY + g_zscanToPelY[part];
++            if (x >= (uint32_t)p.sourceWidth || y >= (uint32_t)p.sourceHeight) { ++part; continue; }
++            const uint32_t depth = ctu->m_cuDepth[part];
++            const uint32_t count = depth < 16 ? ctu->m_numPartitions >> (2 * depth) : 0;
++            if (!count || part + count > ctu->m_numPartitions) { failed = true; break; }
++            bool residual = false;
++            for (uint32_t i = part; i < part + count; ++i)
++            {
++                residual |= ctu->m_cbf[0][i] != 0;
++                if (p.internalCsp != X265_CSP_I400) residual |= (ctu->m_cbf[1][i] | ctu->m_cbf[2][i]) != 0;
++            }
++            // A leaf smaller than QG inherits its QG parent's QP.
++            uint32_t qdepth = X265_MIN(depth, ctu->m_slice->m_pps->maxCuDQPDepth);
++            uint32_t size = p.maxCUSize >> qdepth;
++            uint32_t qx = x / size * size, qy = y / size * size;
++            double requested, aq;
++            offsets(f, p, qx, qy, size, requested, aq);
++            double base = f.m_encData->m_cuStat[addr].baseQp;
++            double target = base + aq + (p.rc.aqMode ? requested : 0);
++            int raw = (int)(target + 0.5); // exactly the native cast, not floor()
++            int clipped = x265_clip3(p.rc.qpMin, p.rc.qpMax, raw);
++            int finalQp = ctu->m_qp[part];
++            bool clipping = finalQp <= 0 || finalQp >= 51 || clipped != raw;
++            failed = fprintf(out, "cu,%lld,%d,%d,%c,,%.17g,,%.17g,%s,%u,%u,%.17g,%d,%d,%d,,,,,,%.17g,%d,%d,%.17g,%u,%u,%u,%d,%d\n",
++                (long long)f.m_pts, f.m_poc, f.m_encodeOrder, sliceName(f), base + aq,
++                p.rc.qCompress, rcName(p), x, y, requested, finalQp, clipping ? 1 : 0,
++                ctu->m_slice->m_sliceQp, base, raw, clipped, aq, qx, qy, size,
++                residual ? 1 : 0, ctu->isSkipped(part) ? 1 : 0) < 0;
++            if (failed) break;
++            part += count;
++        }
++    }
++    closeTrace(out, failed);
++}
++}
+diff --git a/source/encoder/prism_telemetry.h b/source/encoder/prism_telemetry.h
+new file mode 100644
+--- /dev/null
++++ b/source/encoder/prism_telemetry.h
+@@ -0,0 +1,10 @@
++/* Measurement only; internal x265 3.5 interfaces, no public ABI changes. */
++#ifndef X265_PRISM_TELEMETRY_H
++#define X265_PRISM_TELEMETRY_H
++#include "frame.h"
++#include "ratecontrol.h"
++namespace X265_NS {
++void prismTelemetryFrame(const Frame&, const x265_param&, const RateControlEntry&, int);
++void prismTelemetryCUs(const Frame&, const x265_param&);
++}
++#endif
+diff --git a/source/encoder/ratecontrol.cpp b/source/encoder/ratecontrol.cpp
+--- a/source/encoder/ratecontrol.cpp
++++ b/source/encoder/ratecontrol.cpp
+@@ -36,6 +36,7 @@
+ #include "encoder.h"
+ #include "slicetype.h"
+ #include "ratecontrol.h"
++#include "prism_telemetry.h"
+ #include "sei.h"
+ 
+ #define BR_SHIFT  6
+@@ -1399,6 +1400,7 @@
+         m_qp = int(rce->qpaRc + 0.5);
+         rce->frameSizePlanned = qScale2bits(rce, rce->qScale);
+         m_framesDone++;
++        prismTelemetryFrame(*curFrame, *m_param, *rce, m_qp);
+         return m_qp;
+     }
+ 
+@@ -1491,6 +1493,7 @@
+     }
+     m_framesDone++;
+ 
++    prismTelemetryFrame(*curFrame, *m_param, *rce, m_qp);
+     return m_qp;
+ }
+ 

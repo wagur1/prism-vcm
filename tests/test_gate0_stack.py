@@ -56,12 +56,13 @@ class Gate0ControllerTests(unittest.TestCase):
                 raise RuntimeError("test encode error")
             prefix.with_suffix(".hevc").write_bytes(b"different" if identity_error and name == "stock" else b"test")
             prefix.with_suffix(".csv").write_text("Bits\n" + "8\n" * 10)
-        import numpy as _np
+        # Numeric evaluation is mocked; these invariants need no NumPy runtime.
+        def fake_map(values):
+            return SimpleNamespace(max=lambda: max(values), min=lambda: min(values),
+                                   flatten=lambda: values)
         with patch.object(self.spike, "offset_maps", return_value={
-                "zero": _np.zeros((2, 3), dtype=_np.float32),
-                "plus6": _np.full((2, 3), 6.0, dtype=_np.float32),
-                "minus6": _np.full((2, 3), -6.0, dtype=_np.float32),
-                "checkerboard": _np.array([[6.0, -6.0], [-6.0, 6.0]], dtype=_np.float32)}), \
+                "zero": fake_map([0.0]), "plus6": fake_map([6.0]),
+                "minus6": fake_map([-6.0]), "checkerboard": fake_map([-6.0, 6.0])}), \
                 patch.object(self.spike, "encode_condition", side_effect=encode) as encodes, \
                 patch.object(self.spike, "residual_trace", side_effect=lambda *a, **k: dense_trace()), \
                 patch.object(self.spike, "verify_spatial_effect", return_value={"1": 6}), \
@@ -116,6 +117,7 @@ class Gate0ControllerTests(unittest.TestCase):
             self.assertEqual(env["PRISM_X265_SHIM"], str(self.codec.shim_path.resolve()))
             self.assertEqual(env["LD_LIBRARY_PATH"], str(self.codec.library_path.resolve().parent))
             self.assertEqual("PRISM_X265_QP_TRACE" in env, name != "stock")
+            self.assertEqual("PRISM_X265_RC_TELEMETRY" in env, name == "zero")
             self.assertIn("--encode-job-json", run.call_args.args[0])
 
     def test_duplicate_trace_rows_are_rejected(self):
@@ -123,6 +125,16 @@ class Gate0ControllerTests(unittest.TestCase):
         trace.write_text("frame,x,y,qp,has_residual,skip\n0,0,0,32,1,0\n0,0,0,33,1,0\n")
         with self.assertRaisesRegex(ValueError, "Duplicate CU"):
             self.spike.residual_trace(trace, 64, 64)
+
+    def test_collection_fills_missing_groups_without_touching_failed_gate(self):
+        original = '{"status":"FAIL","reason":"frozen band"}'
+        (self.output / "gate0.json").write_text(original)
+        (self.output / "qp27_gop1_zero.job.json").write_text("{}")
+        with patch.object(self.spike, "encode_condition") as encode:
+            result = self.spike.collect_remaining_telemetry(self.output, self.codec)
+        self.assertEqual(encode.call_count, 39)
+        self.assertEqual(result["existing"], ["qp27_gop1_zero"])
+        self.assertEqual((self.output / "gate0.json").read_text(), original)
 
 
 class Gate0RunnerTests(unittest.TestCase):
@@ -133,7 +145,8 @@ class Gate0RunnerTests(unittest.TestCase):
         self.gate = root / "repo/gate0"
         self.gate.mkdir(parents=True)
         self.output = root / "output"
-        for name in ("build-pin.json", "stock-pin.json", "x265_residual_patch.patch", "PATCH_AUDIT.md"):
+        for name in ("build-pin.json", "stock-pin.json", "x265_residual_patch.patch",
+                     "x265_residual_telemetry.patch", "PATCH_AUDIT.md"):
             (self.gate / name).write_text("{}")
         stack = {key: str(self.gate / key) for key in (
             "shim", "library", "stock_shim", "stock_library", "reference_decoder")}
@@ -186,6 +199,38 @@ class Gate0RunnerTests(unittest.TestCase):
         code, report, _ = self.invoke(fake)
         self.assertEqual(code, 42)
         self.assertEqual(report["status"], "FAIL")
+
+    def test_quick_skips_collection_and_calibration(self):
+        def fake(command, env, log):
+            log.write_text("test log\n")
+            if "--output" in command:
+                evidence = Path(command[command.index("--output") + 1])
+                evidence.mkdir()
+                (evidence / "gate0.json").write_text('{"status":"SMOKE_PASS"}')
+            return 0
+        code, report, calls = self.invoke(fake, quick=True)
+        self.assertEqual(code, 0)
+        self.assertEqual(report["status"], "SMOKE_PASS")
+        self.assertEqual(calls.call_count, 2)
+
+    def test_full_calibration_failure_preserves_frozen_verdict_and_exit(self):
+        def fake(command, env, log):
+            log.write_text("test log\n")
+            if "--collect-telemetry-only" in command:
+                return 0
+            if "calibrate_bands.py" in command[1]:
+                return 9
+            if "--output" in command:
+                evidence = Path(command[command.index("--output") + 1])
+                evidence.mkdir()
+                (evidence / "gate0.json").write_text('{"status":"FAIL","reason":"frozen band"}')
+                return 42
+            return 0
+        code, report, calls = self.invoke(fake)
+        self.assertEqual((code, report["status"], report["reason"]), (42, "FAIL", "frozen band"))
+        self.assertEqual(calls.call_count, 4)
+        status = json.loads((Path(report["artifact_directory"]) / "calibration_status.json").read_text())
+        self.assertEqual(status["calibration_exit_code"], 9)
 
 
 if __name__ == "__main__":
