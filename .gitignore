@@ -33,6 +33,7 @@ outputs/
 /data/
 .uv-cache/
 .test-deps/
+prism/data/splits/coco500_ledger.json
 logs/kaggle/*
 !logs/kaggle/gate0/
 !logs/kaggle/gate0/**

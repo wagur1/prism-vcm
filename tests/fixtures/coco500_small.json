@@ -1,0 +1,39 @@
+{
+  "info": {"description": "Synthetic train2017-format fixture. No real COCO data or network."},
+  "categories": [{"id": 1, "name": "person"}, {"id": 3, "name": "car"}, {"id": 17, "name": "cat"}, {"id": 44, "name": "bottle"}],
+  "images": [
+    {"id": 1, "file_name": "000000000001.jpg", "width": 16, "height": 12},
+    {"id": 2, "file_name": "000000000002.jpg", "width": 16, "height": 12},
+    {"id": 3, "file_name": "000000000003.jpg", "width": 16, "height": 12},
+    {"id": 4, "file_name": "000000000004.jpg", "width": 16, "height": 12},
+    {"id": 5, "file_name": "000000000005.jpg", "width": 16, "height": 12},
+    {"id": 6, "file_name": "000000000006.jpg", "width": 16, "height": 12},
+    {"id": 7, "file_name": "000000000007.jpg", "width": 16, "height": 12},
+    {"id": 8, "file_name": "000000000008.jpg", "width": 16, "height": 12}
+  ],
+  "annotations": [
+    {"id": 11, "image_id": 1, "category_id": 1, "bbox": [2,2,4,6], "area": 24},
+    {"id": 12, "image_id": 1, "category_id": 1, "bbox": [8,2,4,6], "area": 24},
+    {"id": 13, "image_id": 1, "category_id": 3, "bbox": [3,3,8,4], "area": 32},
+    {"id": 21, "image_id": 2, "category_id": 1, "bbox": [2,2,4,6], "area": 24},
+    {"id": 22, "image_id": 2, "category_id": 1, "bbox": [8,2,4,6], "area": 24},
+    {"id": 23, "image_id": 2, "category_id": 17, "bbox": [3,3,4,4], "area": 16},
+    {"id": 31, "image_id": 3, "category_id": 3, "bbox": [3,3,8,4], "area": 32},
+    {"id": 32, "image_id": 3, "category_id": 44, "bbox": [2,2,2,6], "area": 12},
+    {"id": 33, "image_id": 3, "category_id": 44, "bbox": [8,2,2,6], "area": 12},
+    {"id": 41, "image_id": 4, "category_id": 3, "bbox": [3,3,8,4], "area": 32},
+    {"id": 42, "image_id": 4, "category_id": 44, "bbox": [2,2,2,6], "area": 12},
+    {"id": 43, "image_id": 4, "category_id": 44, "bbox": [8,2,2,6], "area": 12},
+    {"id": 51, "image_id": 5, "category_id": 17, "bbox": [3,3,4,4], "area": 16},
+    {"id": 52, "image_id": 5, "category_id": 44, "bbox": [2,2,2,6], "area": 12},
+    {"id": 53, "image_id": 5, "category_id": 44, "bbox": [8,2,2,6], "area": 12},
+    {"id": 61, "image_id": 6, "category_id": 17, "bbox": [3,3,4,4], "area": 16},
+    {"id": 62, "image_id": 6, "category_id": 44, "bbox": [2,2,2,6], "area": 12},
+    {"id": 63, "image_id": 6, "category_id": 44, "bbox": [8,2,2,6], "area": 12},
+    {"id": 71, "image_id": 7, "category_id": 1, "bbox": [2,2,4,6], "area": 24},
+    {"id": 72, "image_id": 7, "category_id": 1, "bbox": [8,2,4,6], "area": 24},
+    {"id": 81, "image_id": 8, "category_id": 44, "bbox": [2,2,2,6], "area": 12},
+    {"id": 82, "image_id": 8, "category_id": 44, "bbox": [8,2,2,6], "area": 12},
+    {"id": 83, "image_id": 8, "category_id": 44, "bbox": [5,2,2,6], "area": 12}
+  ]
+}

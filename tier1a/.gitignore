@@ -1,0 +1,8 @@
+__pycache__/
+coco500/
+teachers/
+coco500_selection.json
+coco500_ledger.json
+prepare_report.json
+tier1a_step1_report.json
+install.log
