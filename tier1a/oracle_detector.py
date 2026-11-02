@@ -43,7 +43,7 @@ def source_box(xyxy: list[float], geometry: dict) -> list[float]:
 
 
 class CocoAP50:
-    def __init__(self, annotations: Path, weights: Path, image_ids: set[int]):
+    def __init__(self, annotations: Path, weights: Path, image_ids: set[int], *, device: str | None = None):
         if not weights.is_file():
             raise FileNotFoundError(f"Provision local YOLO11-L weights first: {weights}")
         import torch
@@ -51,6 +51,11 @@ class CocoAP50:
         from pycocotools.coco import COCO
         torch.set_num_threads(4)
         torch.manual_seed(0)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(0)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+        self.device = device or ("cuda:0" if torch.cuda.is_available() else "cpu")
         with redirect_stdout(io.StringIO()):
             self.coco = COCO(str(annotations))
         if not image_ids <= set(self.coco.imgs) or tuple(sorted(self.coco.cats)) != COCO_IDS:
@@ -69,7 +74,7 @@ class CocoAP50:
         for index, category_id in enumerate(COCO_IDS):
             if self.model.names[index] != self.coco.cats[category_id]["name"]:
                 raise ValueError("Detector COCO class names/order mismatch")
-        self.provenance = {**SETTINGS, "weights_sha256": sha256(weights),
+        self.provenance = {**SETTINGS, "device": self.device, "weights_sha256": sha256(weights),
                            "parameters": self.parameters,
                            "versions": {name: importlib.metadata.version(name)
                                         for name in ("torch", "ultralytics", "pycocotools", "numpy", "Pillow")}}
@@ -83,7 +88,7 @@ class CocoAP50:
         # Ultralytics ndarray input is BGR. Its boxes are returned in full input
         # pixel coordinates after the detector's own resize/letterbox inversion.
         prediction = self.model.predict(source=np.ascontiguousarray(rgb[..., ::-1]),
-            device="cpu", imgsz=640, conf=.001, iou=.7, max_det=100, augment=False,
+            device=self.device, imgsz=640, conf=.001, iou=.7, max_det=100, augment=False,
             half=False, verbose=False, save=False, batch=1)[0]
         rows = []
         for box, score, cls in zip(prediction.boxes.xyxy.cpu().numpy(),

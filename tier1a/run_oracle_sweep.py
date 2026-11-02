@@ -350,18 +350,20 @@ def codec_dry_run(args) -> int:
     return 0 if report["status"] == "PASS" else 1
 
 
-def report_for(sweep: FrameSweep, started: float, cpu_started: float, prior_gpu_hours: float) -> dict:
+def report_for(sweep: FrameSweep, started: float, cpu_started: float, prior_gpu_hours: float, gpu_devices: int = 0) -> dict:
     rows = list(sweep.data["labels"].values())
     candidates = [c for r in rows for c in r.get("candidates", [])]
+    wall_seconds = time.monotonic() - started
+    gpu_hours = gpu_devices * wall_seconds / 3600
     return {"schema_version": 1, "status": "RUNNING", "expected_frames": 500,
         "pass_frames": sum(r["status"] == "PASS" for r in rows),
         "fail_frames": sum(r["status"] == "FAIL" for r in rows),
         "running_frames": sum(r["status"] == "RUNNING" for r in rows),
-        "pending_frames": 500 - len(rows), "wall_seconds": time.monotonic() - started,
+        "pending_frames": 500 - len(rows), "wall_seconds": wall_seconds,
         "cpu_hours": (cpu_seconds() - cpu_started) / 3600,
         "cpu_hours_definition": "process + waited child user/system CPU time; separate from GPU ceiling",
-        "gpu_hours": 0, "prior_pilot_gpu_hours": prior_gpu_hours,
-        "total_pilot_gpu_hours": prior_gpu_hours, "gpu_hour_ceiling": 60,
+        "gpu_hours": gpu_hours, "gpu_devices": gpu_devices, "prior_pilot_gpu_hours": prior_gpu_hours,
+        "total_pilot_gpu_hours": prior_gpu_hours + gpu_hours, "gpu_hour_ceiling": 60,
         "encode_manifest_counts": sweep.manifest.counts(), "lambda_R": sweep.lambda_rate,
         "current_label_candidate_totals": {
             "pass": sum(c["status"] == "PASS" for c in candidates),
@@ -380,7 +382,7 @@ def report_for(sweep: FrameSweep, started: float, cpu_started: float, prior_gpu_
         "honesty_checks": {"train_only": True, "raw_yuv_disk_writes": False,
             "detector_input": "every candidate decoded RGB; zero candidate reused as reference",
             "single_encode_per_candidate": True, "stock_encodes_expected": 1,
-            "failed_candidates_never_win": True, "gpu_inference": False,
+            "failed_candidates_never_win": True, "gpu_inference": gpu_devices > 0,
             "tier1a_gate_claimed": False, "zero_sum_at_crf": False}}
 
 
@@ -392,7 +394,8 @@ def run_job(args) -> int:
     output = args.output.resolve()
     report = {"status": "FAIL", "reason": "Setup did not finish", "council_visibility": COUNCIL,
               "expected_frames": 500, "pass_frames": 0, "fail_frames": 0, "pending_frames": 500,
-              "gpu_hours": 0, "prior_pilot_gpu_hours": args.prior_gpu_hours, "gpu_hour_ceiling": 60}
+              "gpu_hours": 0, "gpu_devices": args.gpu_devices,
+              "prior_pilot_gpu_hours": args.prior_gpu_hours, "gpu_hour_ceiling": 60}
     sweep = None
     with exclusive(output / ".writer.lock"):
         try:
@@ -458,7 +461,7 @@ def run_job(args) -> int:
                 if number == 199:
                     sweep.data["measurement_200"] = projection(pilot_rows)
                     sweep.flush()
-                report = report_for(sweep, started, cpu_started, args.prior_gpu_hours)
+                report = report_for(sweep, started, cpu_started, args.prior_gpu_hours, args.gpu_devices)
                 write_json(output / "oracle_sweep_report.json", report)
                 print(json.dumps({"frame": number + 1, "status": result["status"], "skipped": skipped,
                                   "K": result.get("candidate_count"), "wall_seconds": report["wall_seconds"]}), flush=True)
@@ -468,15 +471,19 @@ def run_job(args) -> int:
                     remaining = pending * sweep.data["effective_k"] * estimate["end_to_end_seconds_per_candidate"] * 1.25
                     if time.monotonic() + remaining > deadline:
                         raise TimeoutError("Even the active K scope projects beyond remaining job allowance; resume later")
-            report = report_for(sweep, started, cpu_started, args.prior_gpu_hours)
+            report = report_for(sweep, started, cpu_started, args.prior_gpu_hours, args.gpu_devices)
             report["status"] = "PASS" if report["pass_frames"] == 500 else "FAIL"
         except Exception as exc:
             if sweep is not None:
-                report = report_for(sweep, started, cpu_started, args.prior_gpu_hours)
+                report = report_for(sweep, started, cpu_started, args.prior_gpu_hours, args.gpu_devices)
             report.update(status="FAIL", reason=f"{type(exc).__name__}: {exc}")
         finally:
-            report.update(wall_seconds=time.monotonic() - started,
-                          cpu_hours=(cpu_seconds() - cpu_started) / 3600)
+            wall_seconds = time.monotonic() - started
+            gpu_hours = args.gpu_devices * wall_seconds / 3600
+            report.update(wall_seconds=wall_seconds,
+                          cpu_hours=(cpu_seconds() - cpu_started) / 3600,
+                          gpu_hours=gpu_hours,
+                          total_pilot_gpu_hours=args.prior_gpu_hours + gpu_hours)
             write_json(output / "oracle_sweep_report.json", report)
     return 0 if report["status"] == "PASS" else 1
 
@@ -498,35 +505,39 @@ def supervise(args) -> int:
     if not (0 < args.wall_hours <= 6 and math.isfinite(args.prior_gpu_hours)
             and 0 <= args.prior_gpu_hours <= 60 and math.isfinite(args.lambda_rate) and args.lambda_rate >= 0):
         raise ValueError("Invalid wall/GPU/lambda limits")
-    # CPU inference does not make an allocated accelerator free. Require a CPU
-    # kernel so the reported zero GPU-hour charge is honest.
     try:
-        devices = subprocess.check_output(["nvidia-smi", "--query-gpu=uuid", "--format=csv,noheader"],
-                                         stderr=subprocess.DEVNULL, timeout=10, text=True).strip()
+        devices = [line for line in subprocess.check_output(
+            ["nvidia-smi", "--query-gpu=uuid", "--format=csv,noheader"],
+            stderr=subprocess.DEVNULL, timeout=10, text=True).splitlines() if line.strip()]
     except (OSError, subprocess.CalledProcessError):
-        devices = ""
-    if devices:
-        raise RuntimeError("Select a CPU-only kernel (accelerator None) for this CPU-accounted step")
+        devices = []
+    gpu_devices = len(devices)
     args.output.mkdir(parents=True, exist_ok=True)
     with exclusive(args.output / ".supervisor.lock"):
         account_path = args.output / "cpu_hours.json"
-        account = read_json(account_path) if account_path.exists() else {"cpu_hours": 0, "wall_hours": 0, "jobs": []}
+        account = read_json(account_path) if account_path.exists() else {
+            "cpu_hours": 0, "gpu_hours": 0, "wall_hours": 0, "jobs": []}
         if account.get("active"):
             active = account.pop("active")
             account["cpu_hours"] += active["reserved_cpu_hours"]
+            account["gpu_hours"] = account.get("gpu_hours", 0) + active.get("reserved_gpu_hours", 0)
             account["wall_hours"] += active["reserved_wall_hours"]
             account["jobs"].append(dict(active, status="INTERRUPTED_CHARGED_RESERVATION"))
         if args.prior_gpu_hours < account.get("prior_pilot_gpu_hours", 0):
             raise ValueError("Prior GPU usage cannot decrease")
         account["prior_pilot_gpu_hours"] = args.prior_gpu_hours
-        account["active"] = {"reserved_cpu_hours": 4 * args.wall_hours, "reserved_wall_hours": args.wall_hours}
+        account["active"] = {"reserved_cpu_hours": 4 * args.wall_hours,
+                             "reserved_gpu_hours": gpu_devices * args.wall_hours,
+                             "reserved_wall_hours": args.wall_hours}
         write_json(account_path, account)
-        env = dict(os.environ, CUDA_VISIBLE_DEVICES="", OMP_NUM_THREADS="4", MKL_NUM_THREADS="4",
+        env = dict(os.environ, CUDA_VISIBLE_DEVICES="0" if gpu_devices else "",
+                   OMP_NUM_THREADS="4", MKL_NUM_THREADS="4",
                    OPENBLAS_NUM_THREADS="1", NUMEXPR_NUM_THREADS="4", YOLO_AUTOINSTALL="false",
                    YOLO_CONFIG_DIR=str(args.output / "yolo_config"))
         started, cpu_started = time.monotonic(), cpu_seconds()
         command = [sys.executable, str(Path(__file__).resolve()), *sys.argv[1:],
-                   "--prior-gpu-hours", str(args.prior_gpu_hours), "--run-job"]
+                   "--prior-gpu-hours", str(args.prior_gpu_hours),
+                   "--gpu-devices", str(gpu_devices), "--run-job"]
         proc = subprocess.Popen(command, env=env, start_new_session=True)
         timed_out = False
         try:
@@ -544,6 +555,7 @@ def supervise(args) -> int:
         # Reaped child accounting can omit grandchildren orphaned by a group
         # kill. Charge the 4-vCPU elapsed allowance in that case, explicitly.
         cpu = max(measured_cpu, 4 * elapsed / 3600) if timed_out else measured_cpu
+        gpu = gpu_devices * elapsed / 3600
         report_path = args.output / "oracle_sweep_report.json"
         report = read_json(report_path) if report_path.exists() else {"status": "FAIL", "reason": "Job exited before report"}
         if timed_out:
@@ -565,13 +577,18 @@ def supervise(args) -> int:
                           fail_frames=sum(r["status"] == "FAIL" for r in rows), pending_frames=500-len(rows), running_frames=0)
         account.pop("active")
         account["cpu_hours"] += cpu
+        account["gpu_hours"] = account.get("gpu_hours", 0) + gpu
         account["wall_hours"] += elapsed / 3600
-        account["jobs"].append({"status": report["status"], "cpu_hours": cpu,
-                                "measured_cpu_hours": measured_cpu, "wall_seconds": elapsed,
-                                "conservative_termination_charge": timed_out})
+        account["jobs"].append({"status": report["status"], "cpu_hours": cpu, "gpu_hours": gpu,
+                                "gpu_devices": gpu_devices, "measured_cpu_hours": measured_cpu,
+                                "wall_seconds": elapsed, "conservative_termination_charge": timed_out})
         write_json(account_path, account)
         report.update(wall_seconds=elapsed, cpu_hours=cpu, cumulative_cpu_hours=account["cpu_hours"],
-                      gpu_hours=0, prior_pilot_gpu_hours=args.prior_gpu_hours, gpu_hour_ceiling=60,
+                      gpu_hours=gpu, gpu_devices=gpu_devices,
+                      cumulative_gpu_hours=account["gpu_hours"],
+                      prior_pilot_gpu_hours=args.prior_gpu_hours,
+                      total_pilot_gpu_hours=args.prior_gpu_hours + account["gpu_hours"],
+                      gpu_hour_ceiling=60,
                       cumulative_cpu_account=str(account_path), measured_cpu_hours=measured_cpu,
                       cpu_accounting_method="4-vCPU elapsed allowance after termination" if timed_out
                       else "process + waited child user/system time")
@@ -598,6 +615,7 @@ def main() -> int:
     parser.add_argument("--lambda-rate", type=float, default=.05)
     parser.add_argument("--wall-hours", type=float, default=6.)
     parser.add_argument("--prior-gpu-hours", type=float, help="Cumulative pilot GPU usage; default inherits Step 1 account")
+    parser.add_argument("--gpu-devices", type=int, default=0, help=argparse.SUPPRESS)
     parser.add_argument("--no-build", action="store_true", help="Require provisioned GATE-0 binaries; no build/network")
     parser.add_argument("--codec-dry-run", action="store_true", help="2x3 synthetic codec-only local smoke, no build/network")
     parser.add_argument("--encode-worker", type=Path, help=argparse.SUPPRESS)
