@@ -70,12 +70,15 @@ class Gate0Encoder:
         self.config = ClaimConfig()
 
     def __call__(self, payload: bytes, offsets: np.ndarray | None, frame: dict,
-                 directory: Path, *, stock: bool = False) -> dict:
+                 directory: Path, *, stock: bool = False, crf: float | None = None) -> dict:
         directory.mkdir(parents=True, exist_ok=True)
         prefix = "stock_" if stock else ""
+        cfg = asdict(self.config)
+        if crf is not None:
+            cfg["crf"] = float(crf)
         job = {"width": frame["geometry"]["width"], "height": frame["geometry"]["height"],
                "library": self.stack[prefix + "library"], "shim": self.stack[prefix + "shim"],
-               "pin": self.stock_pin if stock else self.pin, "config": asdict(self.config),
+               "pin": self.stock_pin if stock else self.pin, "config": cfg,
                "offsets": None if offsets is None else offsets.tolist(),
                "csv": str(directory / "frame.csv"), "bitstream": str(directory / "frame.hevc"),
                "result": str(directory / "encode.json")}

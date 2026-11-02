@@ -28,7 +28,7 @@ JOBS=${GATE0_JOBS:-$(nproc)}
 [[ $JOBS =~ ^[1-9][0-9]*$ ]] || die 'GATE0_JOBS must be a positive integer.'
 if (( JOBS > 4 )); then JOBS=4; fi
 missing=()
-for entry in cmake:cmake git:git patch:patch gcc:gcc g++:g++ make:make ffmpeg:ffmpeg; do
+for entry in cmake:cmake git:git patch:patch gcc:gcc g++:g++ make:make ffmpeg:ffmpeg nasm:nasm; do
     command -v "${entry#*:}" >/dev/null || missing+=("${entry%%:*}")
 done
 if ! dpkg-query -W -f='${Status}' libnuma-dev 2>/dev/null | grep -qx 'install ok installed'; then
@@ -152,6 +152,9 @@ fi
 build_x265() {
     local src=$1 build=$2 shim=$3 label=$4
     step "configure_${label}_x265"
+    if [[ -f "$build/CMakeCache.txt" ]] && ! grep -q "ENABLE_ASSEMBLY:BOOL=$ASM" "$build/CMakeCache.txt"; then
+        rm -rf -- "$build" "$shim"
+    fi
     cmake -S "$src/source" -B "$build" -G 'Unix Makefiles' \
         -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
         -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$build/install" \

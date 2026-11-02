@@ -290,19 +290,26 @@ def load_frame(root: Path, row: dict, ledger: SplitLedger, selection_sha: str) -
     return dict(row, geometry=geometry, candidate_provenance=provenance), payload, maps
 
 
-def ensure_stack(gate: Path, *, build: bool, deadline: float) -> dict:
+def ensure_stack(gate: Path, *, build: bool, deadline: float, require_asm: bool = False) -> dict:
     ready = (gate / "stack.json").is_file()
     if ready:
         stack = read_json(gate / "stack.json")
         ready = all(Path(stack[k]).is_file() for k in ("library", "shim", "stock_library", "stock_shim"))
         ready = ready and all((gate / name).is_file() for name in ("build-pin.json", "stock-pin.json"))
+        if require_asm and not stack.get("enable_assembly", False):
+            ready = False
     if not ready:
         if not build:
             raise FileNotFoundError("No local GATE-0 stack; --no-build forbids downloads/build")
         env = dict(os.environ, GATE0_JOBS="4", GATE0_PYTHON=sys.executable)
+        if require_asm:
+            env["GATE0_ASSEMBLY"] = "ON"
         subprocess.run(["bash", str(gate / "build_gate0_stack.sh")], cwd=REPO, env=env,
                        check=True, timeout=max(.01, deadline - time.monotonic()))
-    return read_json(gate / "stack.json")
+    stack = read_json(gate / "stack.json")
+    if require_asm and not stack.get("enable_assembly", False):
+        raise RuntimeError(f"Expected GATE-0 stack with enable_assembly=True; got {stack.get('asm_decision_reason')}")
+    return stack
 
 
 def codec_dry_run(args) -> int:

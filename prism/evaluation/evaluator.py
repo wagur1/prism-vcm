@@ -10,18 +10,28 @@ from pathlib import Path
 from .metrics import RDPoint, bd_rate, holm_bonferroni
 
 
+RC_GRIDS = {
+    "CRF": {20, 24, 28, 32, 36},
+    "CQP": {27, 32, 37, 42, 47},
+}
+
+
 def evaluate(raw: dict) -> dict:
     curves = {name: [RDPoint(**point) for point in points]
               for name, points in raw["curves"].items()}
     if not {"M1", "M2", "M3", "M4"}.issubset(curves):
         raise ValueError("Report all four pre-registered baselines")
-    qps = {27, 32, 37, 42, 47}
-    if any({point.qp for point in curve} != qps for curve in curves.values()):
-        raise ValueError("Primary CQP matrix is [27,32,37,42,47]")
-    if raw.get("rc_mode") != "CQP" or not raw.get("same_gop_and_tools"):
-        raise ValueError("Primary comparisons require CQP and identical GOP/tools")
+    rc_mode = raw.get("rc_mode")
+    if rc_mode not in RC_GRIDS or not raw.get("same_gop_and_tools"):
+        raise ValueError("Primary comparisons require CRF or CQP and identical GOP/tools")
+    qps = RC_GRIDS[rc_mode]
+    if any(len(curve) != len(qps) or {point.qp for point in curve} != qps for curve in curves.values()):
+        raise ValueError(f"Expected exact {rc_mode} matrix {sorted(qps)} without duplicates")
     report = {f"M4-vs-{anchor}": asdict(bd_rate(curves[anchor], curves["M4"]))
               for anchor in ("M1", "M2", "M3")}
+    report["M2-vs-M1"] = asdict(bd_rate(curves["M1"], curves["M2"]))
+    report["rc_mode"] = rc_mode
+    report["operating_points"] = sorted(qps)
     report["inference_status"] = "descriptive_only"
     # Independent seed and paired-cluster evidence is mandatory for an H1 claim.
     if "p_values" in raw:
