@@ -16,8 +16,8 @@ from tier1a.common import read_json
 from tier1a.oracle_candidates import cached_candidates, candidates_hash, generate_candidates, project_crop
 from tier1a.oracle_codec import ClaimConfig, yuv_to_rgb
 from tier1a.oracle_detector import source_box
-from tier1a.run_oracle_sweep import FrameSweep, choose_scope, projection
-from tier1a.yuv import letterbox_yuv
+from tier1a.run_oracle_sweep import FrameSweep, choose_scope, load_frame, projection
+from tier1a.yuv import letterbox_yuv, save_yuv
 from tier1a.teachers import save_npz
 
 
@@ -269,6 +269,39 @@ class OracleTests(unittest.TestCase):
             stream.write(b"changed")
         with self.assertRaises(ValueError):
             load()
+
+    def test_load_frame_supports_gzip_and_kaggle_auto_gunzipped_yuv(self):
+        from tier1a.common import sha256, write_json
+        rgb = np.zeros((32, 32, 3), dtype=np.uint8)
+        payload, geometry = letterbox_yuv(rgb, 1920, 1080)
+        gz_path = self.root / "coco500/yuv/1.yuv.gz"
+        save_yuv(gz_path, payload)
+        meta = {"image_id": 1, "sample_id": "1", "source_sha256": "a" * 64,
+                "sha256": sha256(gz_path), "geometry": geometry}
+        write_json(gz_path.with_name("1.yuv.gz.json"), meta)
+        row = {"image_id": 1, "sample_id": "1", "source_sha256": "a" * 64, "yuv_metadata": meta}
+        binding = {"source_sha256": "a" * 64, "ledger_sha256": self.ledger.digest, "selection_sha256": "s" * 64}
+        crop = np.array([0, 0, 32, 32])
+        for name, arrays in (("dinov2", {"crop_box": crop, "cls_token": np.ones(768, dtype=np.float16),
+                                         "patch_tokens": np.ones((1369, 768), dtype=np.float16)}),
+                             ("sam21", {"crop_box": crop, "masks": np.zeros((0, 518, 518), dtype=bool)})):
+            save_npz(self.root / "teachers" / name / "1.npz", arrays, binding)
+        frame1, loaded1, maps1 = load_frame(self.root, row, self.ledger, "s" * 64)
+        self.assertEqual(loaded1, payload)
+        # Simulate Kaggle Dataset mount auto-gunzipping 1.yuv.gz -> 1.yuv
+        raw_path = gz_path.with_suffix("")
+        raw_path.write_bytes(payload)
+        gz_path.unlink()
+        frame2, loaded2, maps2 = load_frame(self.root, row, self.ledger, "s" * 64)
+        self.assertEqual(loaded2, payload)
+        np.testing.assert_array_equal(maps1, maps2)
+        self.assertEqual(frame1["geometry"], frame2["geometry"])
+        # Tampered raw YUV must still be rejected by raw_sha256 check
+        bad = bytearray(payload)
+        bad[0] ^= 1
+        raw_path.write_bytes(bytes(bad))
+        with self.assertRaisesRegex(ValueError, "Raw input SHA mismatch"):
+            load_frame(self.root, row, self.ledger, "s" * 64)
 
 
 if __name__ == "__main__":

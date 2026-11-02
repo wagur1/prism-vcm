@@ -267,13 +267,22 @@ def load_frame(root: Path, row: dict, ledger: SplitLedger, selection_sha: str) -
     from tier1a.yuv import load_yuv
     path = root / "coco500/yuv" / f"{row['image_id']}.yuv.gz"
     meta = read_json(path.with_name(path.name + ".json"))
-    if (meta != row["yuv_metadata"] or meta["source_sha256"] != row["source_sha256"]
-            or sha256(path) != meta["sha256"]):
-        raise ValueError("YUV metadata/source/compressed SHA mismatch")
+    if meta != row["yuv_metadata"] or meta["source_sha256"] != row["source_sha256"]:
+        raise ValueError("YUV metadata/source SHA mismatch")
     geometry = meta["geometry"]
     if (geometry["width"], geometry["height"], geometry["matrix"], geometry["range"]) != (1920, 1080, "bt709", "limited"):
         raise ValueError("Require Step 1 1080p BT.709 limited-range geometry")
-    payload = load_yuv(path)
+    if path.is_file():
+        if sha256(path) != meta["sha256"]:
+            raise ValueError("YUV metadata/source/compressed SHA mismatch")
+        payload = load_yuv(path)
+    else:
+        # Kaggle Dataset ingestion transparently gunzips *.yuv.gz -> *.yuv on mount;
+        # raw_sha256 + raw_bytes in the signed Step 1 metadata still authenticate the frame.
+        raw_path = path.with_suffix("")
+        if not raw_path.is_file():
+            raise FileNotFoundError(path)
+        payload = load_yuv(raw_path)
     if hashlib.sha256(payload).hexdigest() != geometry["raw_sha256"]:
         raise ValueError("Raw input SHA mismatch")
     maps, provenance = cached_candidates(root / "teachers", row["sample_id"], geometry,

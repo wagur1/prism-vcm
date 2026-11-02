@@ -54,6 +54,7 @@ def save_yuv(path: Path, payload: bytes) -> None:
 
 
 def load_yuv(path: Path, width: int = 1920, height: int = 1080) -> bytes:
-    with gzip.open(path, "rb") as stream:
+    opener = gzip.open if path.suffix == ".gz" else Path.open
+    with opener(path, "rb") as stream:
         payload = stream.read(frame_bytes(width, height) + 1)
     return memory_yuv([payload], width, height).getvalue()
