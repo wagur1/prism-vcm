@@ -573,6 +573,12 @@ def main() -> int:
     parser.add_argument("--gpu-devices", type=int, default=2)
     parser.add_argument("--epochs", type=int, default=25)
     parser.add_argument("--backbone", default="timm", choices=("auto", "timm", "small"))
+    parser.add_argument(
+        "--eval-split",
+        default="pilot+dev",
+        choices=("pilot", "pilot+dev", "all_heldout"),
+        help="Evaluation split selection: pilot (50), pilot+dev (100), all_heldout (200)",
+    )
     parser.add_argument("--require-asm", action="store_true", default=True)
     parser.add_argument("--no-require-asm", dest="require_asm", action="store_false")
     parser.add_argument("--no-build", action="store_true")
@@ -618,6 +624,15 @@ def main() -> int:
         cal_ids = sorted([e.sample_id for e in step3_ledger.entries if e.split == "calibration"], key=int)
         dev_ids = sorted([e.sample_id for e in step3_ledger.entries if e.split == "dev"], key=int)
         pilot_ids = sorted([e.sample_id for e in step3_ledger.entries if e.split == "pilot"], key=int)
+
+        if args.eval_split == "pilot":
+            pilot_ids = sorted([e.sample_id for e in step3_ledger.entries if e.split == "pilot"], key=int)
+        elif args.eval_split == "pilot+dev":
+            pilot_ids = sorted([e.sample_id for e in step3_ledger.entries if e.split in ("pilot", "dev")], key=int)
+        elif args.eval_split == "all_heldout":
+            pilot_ids = sorted([e.sample_id for e in step3_ledger.entries if e.split in ("pilot", "dev", "calibration")], key=int)
+        else:
+            pilot_ids = sorted([e.sample_id for e in step3_ledger.entries if e.split == "pilot"], key=int)
 
         first_train_frame, first_train_payload, _ = load_frame(
             args.input, row_by_sid[train_ids[0]], parent_ledger, selection_sha
@@ -708,7 +723,8 @@ def main() -> int:
         m4_obs: dict[int, dict[str, dict[int, dict]]] = {seed: {sid: {} for sid in pilot_ids} for seed in SEEDS}
 
         for idx_p, sid in enumerate(pilot_ids):
-            step3_ledger.require(sid, "pilot")
+            entry_split = next(e.split for e in step3_ledger.entries if e.sample_id == sid)
+            step3_ledger.require(sid, entry_split)
             frame, payload, _ = load_frame(args.input, row_by_sid[sid], parent_ledger, selection_sha)
             input_sha = hashlib.sha256(payload).hexdigest()
             rgb_raw = yuv_to_rgb(payload, frame["geometry"]["width"], frame["geometry"]["height"])
@@ -1111,6 +1127,8 @@ def main() -> int:
                 "step3_ledger_sha256": step3_ledger.digest,
                 "counts_by_split": split_meta["counts_by_split"],
                 "train_spatial_winner_distribution": {NAMES[k]: v for k, v in winner_counts.items()},
+                "eval_split": args.eval_split,
+                "eval_sample_count": len(pilot_ids),
                 "pilot_touched_during_training": False,
                 "val2017_touched": False,
             },

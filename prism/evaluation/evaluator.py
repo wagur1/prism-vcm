@@ -7,7 +7,7 @@ import json
 import math
 from pathlib import Path
 
-from .metrics import RDPoint, bd_rate, holm_bonferroni
+from .metrics import RDPoint, bd_rate, bjontegaard_bd_rate, holm_bonferroni, pava_pchip_bd_rate
 
 
 RC_GRIDS = {
@@ -31,6 +31,22 @@ def evaluate(raw: dict) -> dict:
               for anchor in ("M1", "M2", "M3")}
     report["M2-vs-M1"] = asdict(bd_rate(curves["M1"], curves["M2"]))
     report["M3-vs-M1"] = asdict(bd_rate(curves["M1"], curves["M3"]))
+
+    # Standard MPEG/ITU-T VCEG-M33 Bjontegaard cubic polynomial BD-rate
+    report["bjontegaard_vceg_m33"] = {
+        f"M4-vs-{anchor}": bjontegaard_bd_rate(curves[anchor], curves["M4"])
+        for anchor in ("M1", "M2", "M3")
+    }
+    report["bjontegaard_vceg_m33"]["M2-vs-M1"] = bjontegaard_bd_rate(curves["M1"], curves["M2"])
+    report["bjontegaard_vceg_m33"]["M3-vs-M1"] = bjontegaard_bd_rate(curves["M1"], curves["M3"])
+
+    # Monotonic PAVA-smoothed PCHIP BD-rate
+    report["pava_pchip"] = {
+        f"M4-vs-{anchor}": pava_pchip_bd_rate(curves[anchor], curves["M4"])
+        for anchor in ("M1", "M2", "M3")
+    }
+    report["pava_pchip"]["M2-vs-M1"] = pava_pchip_bd_rate(curves["M1"], curves["M2"])
+    report["pava_pchip"]["M3-vs-M1"] = pava_pchip_bd_rate(curves["M1"], curves["M3"])
     report["rc_mode"] = rc_mode
     report["operating_points"] = sorted(qps)
     report["inference_status"] = "descriptive_only"

@@ -79,6 +79,73 @@ def isotonic_pava_sensitivity(values: Sequence[float]) -> list[float]:
     return [mean for mean, count in blocks for _ in range(count)]
 
 
+def bjontegaard_bd_rate(anchor: Sequence[RDPoint], candidate: Sequence[RDPoint]) -> dict:
+    """Standard MPEG/ITU-T VCEG-M33 BD-rate using 3rd-order polynomial fit."""
+    import numpy as np
+
+    if len(anchor) < 4 or len(candidate) < 4:
+        return {"bd_rate": None, "valid": False, "reason": "Need >= 4 points for cubic polynomial"}
+
+    r1 = np.array([p.bitstream_bytes for p in anchor], dtype=np.float64)
+    d1 = np.array([p.score for p in anchor], dtype=np.float64)
+    r2 = np.array([p.bitstream_bytes for p in candidate], dtype=np.float64)
+    d2 = np.array([p.score for p in candidate], dtype=np.float64)
+
+    # Fit log(rate) = f(distortion)
+    lr1, lr2 = np.log(r1), np.log(r2)
+    p1 = np.polyfit(d1, lr1, 3)
+    p2 = np.polyfit(d2, lr2, 3)
+
+    low = max(float(np.min(d1)), float(np.min(d2)))
+    high = min(float(np.max(d1)), float(np.max(d2)))
+    if high <= low:
+        return {"bd_rate": None, "valid": False, "reason": "No distortion overlap"}
+
+    P1, P2 = np.polyint(p1), np.polyint(p2)
+    int1 = float(np.polyval(P1, high) - np.polyval(P1, low))
+    int2 = float(np.polyval(P2, high) - np.polyval(P2, low))
+    avg_diff = (int2 - int1) / (high - low)
+    bd = float((np.exp(avg_diff) - 1.0) * 100.0)
+    return {"bd_rate": bd, "valid": True, "overlap_range": [low, high]}
+
+
+def pava_pchip_bd_rate(anchor: Sequence[RDPoint], candidate: Sequence[RDPoint]) -> dict:
+    """PAVA-smoothed monotonic PCHIP BD-rate (filters Monte Carlo sample noise)."""
+    import numpy as np
+    from scipy.interpolate import PchipInterpolator
+
+    a_sorted = sorted(anchor, key=lambda p: p.bitstream_bytes)
+    b_sorted = sorted(candidate, key=lambda p: p.bitstream_bytes)
+
+    a_rates = np.array([p.bitstream_bytes for p in a_sorted], float)
+    b_rates = np.array([p.bitstream_bytes for p in b_sorted], float)
+
+    a_scores = np.array(isotonic_pava_sensitivity([p.score for p in a_sorted]), float)
+    b_scores = np.array(isotonic_pava_sensitivity([p.score for p in b_sorted]), float)
+
+    def enforce_strict_pchip(s, r):
+        out_s, out_r = [float(s[0])], [float(r[0])]
+        for i in range(1, len(s)):
+            if s[i] > out_s[-1] + 1e-6:
+                out_s.append(float(s[i]))
+                out_r.append(float(r[i]))
+            else:
+                out_s.append(out_s[-1] + 1e-4)
+                out_r.append(float(r[i]))
+        return np.array(out_s), np.log(out_r)
+
+    s1, r1 = enforce_strict_pchip(a_scores, a_rates)
+    s2, r2 = enforce_strict_pchip(b_scores, b_rates)
+    low, high = max(float(s1[0]), float(s2[0])), min(float(s1[-1]), float(s2[-1]))
+    if high <= low:
+        return {"bd_rate": None, "valid": False, "reason": "No score overlap"}
+    p1 = PchipInterpolator(s1, r1, extrapolate=False)
+    p2 = PchipInterpolator(s2, r2, extrapolate=False)
+    mean_diff = float((p2.integrate(low, high) - p1.integrate(low, high)) / (high - low))
+    bd = float((np.exp(mean_diff) - 1.0) * 100.0)
+    return {"bd_rate": bd, "valid": True, "overlap_range": [low, high]}
+
+
 def cluster_bootstrap(data: dict[int, dict[str, np.ndarray]],
                       statistic: Callable[[np.ndarray], float] = lambda x: float(np.mean(x)),
                       *, unit: str, resamples: int = 1000, random_seed: int = 0) -> dict:
