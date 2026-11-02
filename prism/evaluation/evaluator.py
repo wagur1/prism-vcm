@@ -30,6 +30,7 @@ def evaluate(raw: dict) -> dict:
     report = {f"M4-vs-{anchor}": asdict(bd_rate(curves[anchor], curves["M4"]))
               for anchor in ("M1", "M2", "M3")}
     report["M2-vs-M1"] = asdict(bd_rate(curves["M1"], curves["M2"]))
+    report["M3-vs-M1"] = asdict(bd_rate(curves["M1"], curves["M3"]))
     report["rc_mode"] = rc_mode
     report["operating_points"] = sorted(qps)
     report["inference_status"] = "descriptive_only"

@@ -47,7 +47,7 @@ def test_min_count_guard_fails_loudly():
     anchor = {(0, 0, 0): 32., (0, 16, 0): 32.}
     changed = {(0, 0, 0): 38., (0, 16, 0): 38.}
     with pytest.raises(ValueError, match="Insufficient residual pairs"):
-        verify_spatial_effect(anchor, changed, np.array([[6.]]))
+        verify_spatial_effect(anchor, changed, np.array([[6., 6.]]))
 
 
 @pytest.mark.integration

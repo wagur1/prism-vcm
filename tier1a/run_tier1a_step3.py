@@ -221,6 +221,34 @@ def infer_student_qp_map(
     return project_zero_mean_qp_map(pred_qg, weights=weights, low=-6.0, high=6.0, quantize_int8=True)
 
 
+def infer_student_residual(
+    model: MobileNetV4HybridController,
+    x_low: Tensor,
+    crf: float,
+    *,
+    device: str,
+    width: int = 1920,
+    height: int = 1080,
+) -> np.ndarray:
+    """Run Student inference at given CRF to generate full-resolution delta-x residual."""
+    model.eval()
+    with torch.no_grad():
+        inp = x_low.unsqueeze(0).to(device)
+        qp_scalar = torch.full((1, 1), float(crf) / 51.0, dtype=torch.float32, device=device)
+        out = model(inp, qp_scalar, for_encoding=False)
+        res_full = F.interpolate(out["residual"], size=(height, width), mode="bilinear", align_corners=False)
+        return res_full[0, 0].detach().cpu().numpy()
+
+
+def apply_residual_to_yuv(payload: bytes, residual: np.ndarray, width: int, height: int) -> bytes:
+    """Apply delta-x residual to luma plane of YUV420p8, clamping to [0, 255]."""
+    n = width * height
+    raw = np.frombuffer(payload, dtype=np.uint8)
+    luma = raw[:n].reshape(height, width).astype(np.float32)
+    luma_prime = np.clip(np.rint(luma + residual), 0, 255).astype(np.uint8)
+    return luma_prime.tobytes() + payload[n:]
+
+
 def train_student_seed(
     seed: int,
     train_samples: list[dict],
@@ -241,6 +269,8 @@ def train_student_seed(
         torch.cuda.manual_seed_all(seed)
 
     model = MobileNetV4HybridController(backbone=backbone, allow_fallback=allow_fallback).to(device)
+    proxy = ProxyCodec(channels=1).to(device)
+    proxy.requires_grad_(False)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max(1, epochs))
     rng = np.random.default_rng(seed)
@@ -274,8 +304,18 @@ def train_student_seed(
             optimizer.zero_grad(set_to_none=True)
             out = model(bx, bqp, for_encoding=False)
             loss_align = masked_qg_huber_loss(out["delta_qp"], by, bm, area_w)
+
+            # DVC surrogate loss for residual (delta_x)
+            bx_luma = (0.299 * bx[:, 0:1] + 0.587 * bx[:, 1:2] + 0.114 * bx[:, 2:3]) * 255.0
+            x_pre = torch.clamp(bx_luma + out["residual"], 0.0, 255.0)
+            b_frame = torch.ones(len(batch_idx), dtype=torch.long, device=device)
+            b_crf = torch.tensor(chosen_crfs, dtype=torch.float32, device=device)
+            dvc_out = proxy(x_pre, out["delta_qp"], b_frame, b_crf)
+
+            loss_recon = F.l1_loss(dvc_out["reconstruction"], bx_luma) / 255.0
+            loss_rate = 0.01 * (dvc_out["rate"].mean() / 1e5)
             loss_res_reg = 0.01 * (out["residual"] ** 2).mean()
-            loss = loss_align + loss_res_reg
+            loss = loss_align + loss_recon + loss_rate + loss_res_reg
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
@@ -664,6 +704,8 @@ def main() -> int:
         # m1_obs[sid][crf] -> {"bytes": int, "yolo_ap50": float, "frcnn_ap50": float, "yolo_rows": list, "frcnn_rows": list}
         m1_obs: dict[str, dict[int, dict]] = {sid: {} for sid in pilot_ids}
         m2_obs: dict[int, dict[str, dict[int, dict]]] = {seed: {sid: {} for sid in pilot_ids} for seed in SEEDS}
+        m3_obs: dict[int, dict[str, dict[int, dict]]] = {seed: {sid: {} for sid in pilot_ids} for seed in SEEDS}
+        m4_obs: dict[int, dict[str, dict[int, dict]]] = {seed: {sid: {} for sid in pilot_ids} for seed in SEEDS}
 
         for idx_p, sid in enumerate(pilot_ids):
             step3_ledger.require(sid, "pilot")
@@ -703,49 +745,125 @@ def main() -> int:
                     m1_obs[sid][crf] = entry
                     physical_encodes += 1
 
-                # --- M3 (Fail-closed Delta-x=0, Delta-Q=0 -> bit-identical alias of M1) ---
-                logical_requests += len(SEEDS)
-
-                # --- M2 (3 seeds) & M4 (Fail-closed Delta-x=0 -> bit-identical alias of M2 per seed) ---
+                # --- M2, M3, M4 across SEEDS ---
                 for seed in SEEDS:
-                    logical_requests += 2  # M2(seed) + M4(seed)
+                    logical_requests += 3  # M2(seed) + M3(seed) + M4(seed)
                     qmap = infer_student_qp_map(models[seed], x_low, float(crf), device=device)
                     qmap_sha = hashlib.sha256(qmap.tobytes()).hexdigest()
-                    # If qmap is all zeros, zero-map identity guarantees bit-identity with M1!
+                    residual = infer_student_residual(models[seed], x_low, float(crf), device=device,
+                                                      width=frame["geometry"]["width"], height=frame["geometry"]["height"])
+                    res_nonzero = bool(np.any(residual != 0.0))
+
+                    # --- M2 (Spatial QP-only, raw payload) ---
                     if not np.any(qmap):
                         cache_hits += 1
                         m2_obs[seed][sid][crf] = m1_obs[sid][crf]
-                        continue
-                    m2_key = digest_json({
-                        "input_sha256": input_sha,
-                        "stock": False,
-                        "crf": crf,
-                        "map_sha256": qmap_sha,
-                        "patched_pin": encoder.pin,
-                    })
-                    if m2_key in eval_cache:
-                        cache_hits += 1
-                        m2_obs[seed][sid][crf] = eval_cache[m2_key]
                     else:
-                        manifest.record("evaluation", sid, model="M2", crf=crf, seed=seed, map_sha256=qmap_sha)
-                        enc_dir = scratch / "pilot_encodes" / sid / f"crf_{crf}_M2_seed{seed}"
-                        res = encoder(payload, qmap, frame, enc_dir, stock=False, crf=float(crf))
-                        decoded_rgb = encoder.decode(res, frame)
-                        det = scorer.score_both(decoded_rgb, frame)
-                        entry = {
-                            "whole_bitstream_bytes": int(res["whole_bitstream_bytes"]),
-                            "bits": int(res["bits"]),
-                            "bitstream_sha256": res["bitstream_sha256"],
-                            "encode_seconds": float(res["encode_seconds"]),
+                        m2_key = digest_json({
+                            "input_sha256": input_sha,
+                            "stock": False,
+                            "crf": crf,
                             "map_sha256": qmap_sha,
-                            "map_mean": float(np.mean(qmap)),
-                            "map_std": float(np.std(qmap)),
-                            "yolo11l": det["yolo11l"],
-                            "faster_rcnn": det["faster_rcnn"],
-                        }
-                        eval_cache[m2_key] = entry
-                        m2_obs[seed][sid][crf] = entry
-                        physical_encodes += 1
+                            "patched_pin": encoder.pin,
+                        })
+                        if m2_key in eval_cache:
+                            cache_hits += 1
+                            m2_obs[seed][sid][crf] = eval_cache[m2_key]
+                        else:
+                            manifest.record("evaluation", sid, model="M2", crf=crf, seed=seed, map_sha256=qmap_sha)
+                            enc_dir = scratch / "pilot_encodes" / sid / f"crf_{crf}_M2_seed{seed}"
+                            res = encoder(payload, qmap, frame, enc_dir, stock=False, crf=float(crf))
+                            decoded_rgb = encoder.decode(res, frame)
+                            det = scorer.score_both(decoded_rgb, frame)
+                            entry = {
+                                "whole_bitstream_bytes": int(res["whole_bitstream_bytes"]),
+                                "bits": int(res["bits"]),
+                                "bitstream_sha256": res["bitstream_sha256"],
+                                "encode_seconds": float(res["encode_seconds"]),
+                                "map_sha256": qmap_sha,
+                                "map_mean": float(np.mean(qmap)),
+                                "map_std": float(np.std(qmap)),
+                                "yolo11l": det["yolo11l"],
+                                "faster_rcnn": det["faster_rcnn"],
+                            }
+                            eval_cache[m2_key] = entry
+                            m2_obs[seed][sid][crf] = entry
+                            physical_encodes += 1
+
+                    # --- M3 & M4 (Preprocessed payload) ---
+                    if not res_nonzero:
+                        cache_hits += 2
+                        m3_obs[seed][sid][crf] = m1_obs[sid][crf]
+                        m4_obs[seed][sid][crf] = m2_obs[seed][sid][crf]
+                    else:
+                        pre_payload = apply_residual_to_yuv(payload, residual, frame["geometry"]["width"], frame["geometry"]["height"])
+                        pre_sha = hashlib.sha256(pre_payload).hexdigest()
+                        res_sha = hashlib.sha256(residual.tobytes()).hexdigest()
+
+                        # --- M3 (Preprocessing-only, stock x265) ---
+                        m3_key = digest_json({
+                            "input_sha256": pre_sha,
+                            "stock": True,
+                            "crf": crf,
+                            "map_sha256": "STOCK_NONE",
+                            "stock_pin": encoder.stock_pin,
+                            "res_sha256": res_sha,
+                        })
+                        if m3_key in eval_cache:
+                            cache_hits += 1
+                            m3_obs[seed][sid][crf] = eval_cache[m3_key]
+                        else:
+                            manifest.record("evaluation", sid, model="M3", crf=crf, seed=seed, map_sha256="STOCK_NONE")
+                            enc_dir = scratch / "pilot_encodes" / sid / f"crf_{crf}_M3_seed{seed}"
+                            res = encoder(pre_payload, None, frame, enc_dir, stock=True, crf=float(crf))
+                            decoded_rgb = encoder.decode(res, frame)
+                            det = scorer.score_both(decoded_rgb, frame)
+                            entry = {
+                                "whole_bitstream_bytes": int(res["whole_bitstream_bytes"]),
+                                "bits": int(res["bits"]),
+                                "bitstream_sha256": res["bitstream_sha256"],
+                                "encode_seconds": float(res["encode_seconds"]),
+                                "res_sha256": res_sha,
+                                "yolo11l": det["yolo11l"],
+                                "faster_rcnn": det["faster_rcnn"],
+                            }
+                            eval_cache[m3_key] = entry
+                            m3_obs[seed][sid][crf] = entry
+                            physical_encodes += 1
+
+                        # --- M4 (Coupled Preprocessing + Spatial QP) ---
+                        m4_key = digest_json({
+                            "input_sha256": pre_sha,
+                            "stock": False,
+                            "crf": crf,
+                            "map_sha256": qmap_sha,
+                            "patched_pin": encoder.pin,
+                            "res_sha256": res_sha,
+                        })
+                        if m4_key in eval_cache:
+                            cache_hits += 1
+                            m4_obs[seed][sid][crf] = eval_cache[m4_key]
+                        else:
+                            manifest.record("evaluation", sid, model="M4", crf=crf, seed=seed, map_sha256=qmap_sha)
+                            enc_dir = scratch / "pilot_encodes" / sid / f"crf_{crf}_M4_seed{seed}"
+                            res = encoder(pre_payload, qmap, frame, enc_dir, stock=False, crf=float(crf))
+                            decoded_rgb = encoder.decode(res, frame)
+                            det = scorer.score_both(decoded_rgb, frame)
+                            entry = {
+                                "whole_bitstream_bytes": int(res["whole_bitstream_bytes"]),
+                                "bits": int(res["bits"]),
+                                "bitstream_sha256": res["bitstream_sha256"],
+                                "encode_seconds": float(res["encode_seconds"]),
+                                "map_sha256": qmap_sha,
+                                "map_mean": float(np.mean(qmap)),
+                                "map_std": float(np.std(qmap)),
+                                "res_sha256": res_sha,
+                                "yolo11l": det["yolo11l"],
+                                "faster_rcnn": det["faster_rcnn"],
+                            }
+                            eval_cache[m4_key] = entry
+                            m4_obs[seed][sid][crf] = entry
+                            physical_encodes += 1
 
             if (idx_p + 1) % 5 == 0 or idx_p + 1 == len(pilot_ids):
                 write_json(cache_path, eval_cache)
@@ -768,6 +886,12 @@ def main() -> int:
             m2_curves_per_img_by_seed = {seed: [] for seed in SEEDS}
             m2_curves_pooled_by_seed = {seed: [] for seed in SEEDS}
             m2_pooled_details = {str(seed): {} for seed in SEEDS}
+            m3_curves_per_img_by_seed = {seed: [] for seed in SEEDS}
+            m3_curves_pooled_by_seed = {seed: [] for seed in SEEDS}
+            m3_pooled_details = {str(seed): {} for seed in SEEDS}
+            m4_curves_per_img_by_seed = {seed: [] for seed in SEEDS}
+            m4_curves_pooled_by_seed = {seed: [] for seed in SEEDS}
+            m4_pooled_details = {str(seed): {} for seed in SEEDS}
 
             for crf in CRF_GRID:
                 m1_bytes = sum(m1_obs[sid][crf]["whole_bitstream_bytes"] for sid in pilot_ids)
@@ -779,29 +903,60 @@ def main() -> int:
                 m1_curve_pooled.append({"qp": crf, "score": m1_pooled["ap50"], "bitstream_bytes": m1_bytes})
 
                 for seed in SEEDS:
-                    s_bytes = sum(m2_obs[seed][sid][crf]["whole_bitstream_bytes"] for sid in pilot_ids)
-                    s_mean_ap50 = float(np.mean([m2_obs[seed][sid][crf][det_key]["ap50"] for sid in pilot_ids]))
-                    s_rows = [row for sid in pilot_ids for row in m2_obs[seed][sid][crf][det_key]["rows"]]
-                    s_pooled = evaluate_pooled_coco_metrics(scorer.coco, ordered_pilot_img_ids, s_rows)
-                    m2_pooled_details[str(seed)][str(crf)] = {
-                        **s_pooled,
-                        "whole_bitstream_bytes": s_bytes,
-                        "mean_per_image_ap50": s_mean_ap50,
-                    }
-                    m2_curves_per_img_by_seed[seed].append({"qp": crf, "score": s_mean_ap50, "bitstream_bytes": s_bytes})
-                    m2_curves_pooled_by_seed[seed].append({"qp": crf, "score": s_pooled["ap50"], "bitstream_bytes": s_bytes})
+                    # M2
+                    s2_bytes = sum(m2_obs[seed][sid][crf]["whole_bitstream_bytes"] for sid in pilot_ids)
+                    s2_mean_ap50 = float(np.mean([m2_obs[seed][sid][crf][det_key]["ap50"] for sid in pilot_ids]))
+                    s2_rows = [row for sid in pilot_ids for row in m2_obs[seed][sid][crf][det_key]["rows"]]
+                    s2_pooled = evaluate_pooled_coco_metrics(scorer.coco, ordered_pilot_img_ids, s2_rows)
+                    m2_pooled_details[str(seed)][str(crf)] = {**s2_pooled, "whole_bitstream_bytes": s2_bytes, "mean_per_image_ap50": s2_mean_ap50}
+                    m2_curves_per_img_by_seed[seed].append({"qp": crf, "score": s2_mean_ap50, "bitstream_bytes": s2_bytes})
+                    m2_curves_pooled_by_seed[seed].append({"qp": crf, "score": s2_pooled["ap50"], "bitstream_bytes": s2_bytes})
 
-            # Mean M2 curve across the 3 seeds
-            m2_mean_curve_per_img = []
-            m2_mean_curve_pooled = []
+                    # M3
+                    s3_bytes = sum(m3_obs[seed][sid][crf]["whole_bitstream_bytes"] for sid in pilot_ids)
+                    s3_mean_ap50 = float(np.mean([m3_obs[seed][sid][crf][det_key]["ap50"] for sid in pilot_ids]))
+                    s3_rows = [row for sid in pilot_ids for row in m3_obs[seed][sid][crf][det_key]["rows"]]
+                    s3_pooled = evaluate_pooled_coco_metrics(scorer.coco, ordered_pilot_img_ids, s3_rows)
+                    m3_pooled_details[str(seed)][str(crf)] = {**s3_pooled, "whole_bitstream_bytes": s3_bytes, "mean_per_image_ap50": s3_mean_ap50}
+                    m3_curves_per_img_by_seed[seed].append({"qp": crf, "score": s3_mean_ap50, "bitstream_bytes": s3_bytes})
+                    m3_curves_pooled_by_seed[seed].append({"qp": crf, "score": s3_pooled["ap50"], "bitstream_bytes": s3_bytes})
+
+                    # M4
+                    s4_bytes = sum(m4_obs[seed][sid][crf]["whole_bitstream_bytes"] for sid in pilot_ids)
+                    s4_mean_ap50 = float(np.mean([m4_obs[seed][sid][crf][det_key]["ap50"] for sid in pilot_ids]))
+                    s4_rows = [row for sid in pilot_ids for row in m4_obs[seed][sid][crf][det_key]["rows"]]
+                    s4_pooled = evaluate_pooled_coco_metrics(scorer.coco, ordered_pilot_img_ids, s4_rows)
+                    m4_pooled_details[str(seed)][str(crf)] = {**s4_pooled, "whole_bitstream_bytes": s4_bytes, "mean_per_image_ap50": s4_mean_ap50}
+                    m4_curves_per_img_by_seed[seed].append({"qp": crf, "score": s4_mean_ap50, "bitstream_bytes": s4_bytes})
+                    m4_curves_pooled_by_seed[seed].append({"qp": crf, "score": s4_pooled["ap50"], "bitstream_bytes": s4_bytes})
+
+            # Mean M2, M3, M4 curves across the 3 seeds
+            m2_mean_curve_per_img, m2_mean_curve_pooled = [], []
+            m3_mean_curve_per_img, m3_mean_curve_pooled = [], []
+            m4_mean_curve_per_img, m4_mean_curve_pooled = [], []
             for idx_c, crf in enumerate(CRF_GRID):
-                mean_bytes = int(round(np.mean([m2_curves_per_img_by_seed[s][idx_c]["bitstream_bytes"] for s in SEEDS])))
-                mean_score_img = float(np.mean([m2_curves_per_img_by_seed[s][idx_c]["score"] for s in SEEDS]))
-                mean_score_pool = float(np.mean([m2_curves_pooled_by_seed[s][idx_c]["score"] for s in SEEDS]))
-                m2_mean_curve_per_img.append({"qp": crf, "score": mean_score_img, "bitstream_bytes": mean_bytes})
-                m2_mean_curve_pooled.append({"qp": crf, "score": mean_score_pool, "bitstream_bytes": mean_bytes})
+                # M2
+                b2 = int(round(np.mean([m2_curves_per_img_by_seed[s][idx_c]["bitstream_bytes"] for s in SEEDS])))
+                s2_img = float(np.mean([m2_curves_per_img_by_seed[s][idx_c]["score"] for s in SEEDS]))
+                s2_pol = float(np.mean([m2_curves_pooled_by_seed[s][idx_c]["score"] for s in SEEDS]))
+                m2_mean_curve_per_img.append({"qp": crf, "score": s2_img, "bitstream_bytes": b2})
+                m2_mean_curve_pooled.append({"qp": crf, "score": s2_pol, "bitstream_bytes": b2})
 
-            # Paired cluster bootstrap (resamples=2000, unit="image") for M2-vs-M1
+                # M3
+                b3 = int(round(np.mean([m3_curves_per_img_by_seed[s][idx_c]["bitstream_bytes"] for s in SEEDS])))
+                s3_img = float(np.mean([m3_curves_per_img_by_seed[s][idx_c]["score"] for s in SEEDS]))
+                s3_pol = float(np.mean([m3_curves_pooled_by_seed[s][idx_c]["score"] for s in SEEDS]))
+                m3_mean_curve_per_img.append({"qp": crf, "score": s3_img, "bitstream_bytes": b3})
+                m3_mean_curve_pooled.append({"qp": crf, "score": s3_pol, "bitstream_bytes": b3})
+
+                # M4
+                b4 = int(round(np.mean([m4_curves_per_img_by_seed[s][idx_c]["bitstream_bytes"] for s in SEEDS])))
+                s4_img = float(np.mean([m4_curves_per_img_by_seed[s][idx_c]["score"] for s in SEEDS]))
+                s4_pol = float(np.mean([m4_curves_pooled_by_seed[s][idx_c]["score"] for s in SEEDS]))
+                m4_mean_curve_per_img.append({"qp": crf, "score": s4_img, "bitstream_bytes": b4})
+                m4_mean_curve_pooled.append({"qp": crf, "score": s4_pol, "bitstream_bytes": b4})
+
+            # Paired cluster bootstrap (resamples=2000, unit="image") for M4-vs-M1 and M2-vs-M1
             boot_data_m2_vs_m1 = {
                 seed: {
                     sid: (
@@ -813,6 +968,18 @@ def main() -> int:
                 for seed in SEEDS
             }
             boot_m2_vs_m1 = paired_bd_bootstrap(boot_data_m2_vs_m1, unit="image", resamples=2000, random_seed=0)
+
+            boot_data_m4_vs_m1 = {
+                seed: {
+                    sid: (
+                        [RDPoint(crf, m1_obs[sid][crf][det_key]["ap50"], m1_obs[sid][crf]["whole_bitstream_bytes"]) for crf in CRF_GRID],
+                        [RDPoint(crf, m4_obs[seed][sid][crf][det_key]["ap50"], m4_obs[seed][sid][crf]["whole_bitstream_bytes"]) for crf in CRF_GRID],
+                    )
+                    for sid in pilot_ids
+                }
+                for seed in SEEDS
+            }
+            boot_m4_vs_m1 = paired_bd_bootstrap(boot_data_m4_vs_m1, unit="image", resamples=2000, random_seed=0)
 
             # Paired p-values across 5 CRFs (M4-vs-M2 = 1.0 under fail-closed; M4-vs-M3 = M2-vs-M1)
             anchor_ap = {sid: {crf: m1_obs[sid][crf][det_key]["ap50"] for crf in CRF_GRID} for sid in pilot_ids}
@@ -827,8 +994,8 @@ def main() -> int:
                 "curves": {
                     "M1": m1_curve_per_img,
                     "M2": m2_mean_curve_per_img,
-                    "M3": m1_curve_per_img,
-                    "M4": m2_mean_curve_per_img,
+                    "M3": m3_mean_curve_per_img,
+                    "M4": m4_mean_curve_per_img,
                 },
                 "p_values": p_family_10,
             })
@@ -838,8 +1005,8 @@ def main() -> int:
                 "curves": {
                     "M1": m1_curve_pooled,
                     "M2": m2_mean_curve_pooled,
-                    "M3": m1_curve_pooled,
-                    "M4": m2_mean_curve_pooled,
+                    "M3": m3_mean_curve_pooled,
+                    "M4": m4_mean_curve_pooled,
                 },
                 "p_values": p_family_10,
             })
@@ -882,8 +1049,11 @@ def main() -> int:
                 "per_image_mean_evaluation": eval_per_img,
                 "bootstrap_m2_vs_m1_per_image": boot_m2_vs_m1,
                 "holm_m2_vs_m1_5crf": holm_bonferroni(p_m2_vs_m1),
+                "bootstrap_m4_vs_m1_per_image": boot_m4_vs_m1,
                 "m1_pooled_by_crf": m1_pooled_details,
                 "m2_pooled_by_seed_and_crf": m2_pooled_details,
+                "m3_pooled_by_seed_and_crf": m3_pooled_details,
+                "m4_pooled_by_seed_and_crf": m4_pooled_details,
                 "mean_ap_small_delta_pp": mean_ap_small_delta_pp,
                 "max_ap50_drop_pp": float(max(ap50_drops_pp)),
                 "task_floor_passed": task_floor_ok,
