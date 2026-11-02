@@ -4,6 +4,7 @@ import pytest
 import torch
 
 from prism.training.gates import require_training_ready
+from prism.training.manifest import EncodeManifest
 from tier1a.common import read_json
 from tier1a.oracle_candidates import candidates_hash, generate_candidates
 from tier1a.run_tier1a_step3 import (
@@ -11,6 +12,7 @@ from tier1a.run_tier1a_step3 import (
     masked_qg_huber_loss,
     project_zero_mean_qp_map,
     qg_area_weights,
+    run_asm_smoke_suite,
     run_calibration_audit,
     select_spatial_winner,
     train_student_seed,
@@ -144,3 +146,34 @@ def test_student_training_and_calibration_fail_closed(tmp_path):
     assert cal_rep["delta_x_forced_zero"] is True
     assert cal_rep["m3_aliases_m1"] is True
     assert cal_rep["m4_aliases_m2"] is True
+
+
+def test_asm_smoke_suite_and_manifest_accounting(tmp_path):
+    class StubEncoder:
+        stack = {"enable_assembly": True, "nasm_version": "NASM version 2.15.05"}
+
+        def __call__(self, payload, offsets, frame, directory, *, stock=False, crf=20.0):
+            is_nonzero = offsets is not None and bool(np.any(offsets))
+            tag = f"crf_{int(crf)}_{'plus3' if is_nonzero else 'stock_or_zero'}"
+            b_bytes = 50000 - int(crf) * 500 - (5000 if is_nonzero else 0)
+            return {
+                "whole_bitstream_bytes": b_bytes,
+                "bits": b_bytes * 8,
+                "bitstream_sha256": f"sha_{tag}",
+                "encode_seconds": 0.65,
+            }
+
+    manifest = EncodeManifest(
+        tmp_path / "manifest.jsonl",
+        repo_sha="abc1234",
+        config_sha="cfg1234",
+        build={"patched": {}, "stock": {}},
+        seed=0,
+    )
+    frame = {"sample_id": "2782", "image_id": 2782, "geometry": {"width": 1920, "height": 1080}}
+    smoke = run_asm_smoke_suite(StubEncoder(), frame, b"yuv", tmp_path, manifest)
+    assert smoke["status"] == "PASS"
+    assert smoke["enable_assembly"] is True
+    assert smoke["physical_encodes"] == 11
+    assert manifest.counts()["gate0"] == 11
+

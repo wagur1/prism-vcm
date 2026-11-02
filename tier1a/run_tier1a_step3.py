@@ -523,6 +523,7 @@ def main() -> int:
     parser.add_argument("--frcnn-weights", type=Path, default=None)
     parser.add_argument("--gate", type=Path, default=REPO / "gate0")
     parser.add_argument("--output", type=Path, default=REPO / "tier1a/step3_out")
+    parser.add_argument("--scratch-dir", type=Path, default=Path("/tmp/prism_step3_scratch"))
     parser.add_argument("--working", type=Path, default=Path("/kaggle/working"))
     parser.add_argument("--ffmpeg", default="ffmpeg")
     parser.add_argument("--wall-hours", type=float, default=5.65)
@@ -541,6 +542,8 @@ def main() -> int:
     deadline = started + args.wall_hours * 3600 - 90
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
+    scratch = args.scratch_dir.resolve()
+    scratch.mkdir(parents=True, exist_ok=True)
 
     with exclusive(output / ".step3.lock"):
         check_storage(args.working if args.working.exists() else output, 100_000_000)
@@ -560,7 +563,10 @@ def main() -> int:
         manifest = EncodeManifest(
             output / "step3_encode_manifest.jsonl",
             repo_sha=repo_sha,
-            build_pin=digest_json({"patched": encoder.pin, "stock": encoder.stock_pin}),
+            config_sha=digest_json({
+                name: sha256(REPO / "docs" / name) for name in ("CONFIG_V1_3.md", "CONFIG_V1_4.md")
+            }),
+            build={"patched": encoder.pin, "stock": encoder.stock_pin},
             seed=0,
         )
 
@@ -574,7 +580,7 @@ def main() -> int:
         first_train_frame, first_train_payload, _ = load_frame(
             args.input, row_by_sid[train_ids[0]], parent_ledger, selection_sha
         )
-        asm_smoke = run_asm_smoke_suite(encoder, first_train_frame, first_train_payload, output, manifest)
+        asm_smoke = run_asm_smoke_suite(encoder, first_train_frame, first_train_payload, scratch, manifest)
         gate0_record = {"status": asm_smoke["status"], "pin": encoder.pin}
         require_training_ready(gate0_record, step3_ledger, encoder.pin)
 
@@ -678,8 +684,8 @@ def main() -> int:
                     cache_hits += 1
                     m1_obs[sid][crf] = eval_cache[m1_key]
                 else:
-                    manifest.record("pilot_eval", sid, model="M1", crf=crf, seed=None)
-                    enc_dir = output / "pilot_encodes" / sid / f"crf_{crf}_M1"
+                    manifest.record("evaluation", sid, model="M1", crf=crf, seed=None)
+                    enc_dir = scratch / "pilot_encodes" / sid / f"crf_{crf}_M1"
                     res = encoder(payload, None, frame, enc_dir, stock=True, crf=float(crf))
                     decoded_rgb = encoder.decode(res, frame)
                     det = scorer.score_both(decoded_rgb, frame)
@@ -719,8 +725,8 @@ def main() -> int:
                         cache_hits += 1
                         m2_obs[seed][sid][crf] = eval_cache[m2_key]
                     else:
-                        manifest.record("pilot_eval", sid, model="M2", crf=crf, seed=seed, map_sha256=qmap_sha)
-                        enc_dir = output / "pilot_encodes" / sid / f"crf_{crf}_M2_seed{seed}"
+                        manifest.record("evaluation", sid, model="M2", crf=crf, seed=seed, map_sha256=qmap_sha)
+                        enc_dir = scratch / "pilot_encodes" / sid / f"crf_{crf}_M2_seed{seed}"
                         res = encoder(payload, qmap, frame, enc_dir, stock=False, crf=float(crf))
                         decoded_rgb = encoder.decode(res, frame)
                         det = scorer.score_both(decoded_rgb, frame)
