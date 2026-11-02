@@ -19,8 +19,8 @@
 | CONFIG v1.4 amendment (§D: CRF primary — CQP làm quantOffsets vô hiệu, council-verified) | ✅ 2026-11-01 (9/9) | `docs/CONFIG_V1_4.md` |
 | Repo skeleton + Student + tests | ✅ Implemented; validation limited by local dependencies | §A–F, H.2; see validation notes below |
 | GATE 0 codec spike (x265 quantOffsets) | ✅ **PASS 6/6** (offline confirmatory FINAL 2026-11-01, frozen criteria v3 per-QG16 drift-cancelled net-effect; deep telemetry workstream + 9-escalation council process) | `logs/kaggle/gate0/confirmatory_final/` + `gate0/criteria_frozen_v3.json` |
-| Frozen split SHA ledger | ⏸ Guard implemented; real data pending | No fabricated hashes; val2017 remains sealed |
-| Tầng 1a pilot (COCO500 + K400-100, Kaggle pool) | ⏳ | §F |
+| Frozen split SHA ledger | ✅ Frozen | `prism/data/splits/coco500_ledger.json` |
+| Tầng 1a Step 3 Pilot (M1–M4 across 5 CRFs & 3 seeds) | ✅ **PASS** (2,511 physical encodes, DVC-joint student; BD-rate $-15.90\%$ YOLO11-L, $-63.31\%$ Faster R-CNN) | [`docs/reports/STEP3_M1_M4_EMPIRICAL_REPORT.md`](docs/reports/STEP3_M1_M4_EMPIRICAL_REPORT.md) |
 | Tầng 1b (COCO5k + MOT17 đủ 7 chuỗi) | ⏳ | sau Gate 1a |
 
 *Kaggle run logs sẽ được tải về `logs/kaggle/` và push sau mỗi mốc.*
