@@ -1,0 +1,122 @@
+{
+  "council_visibility": [
+    "D: per-image AP50 excludes classes without evaluable GT; see oracle_detector docstring",
+    "J: maximize AP50 + lambda_R * R0/R; differs from CONFIG C distortion + lambda_R * R/R0",
+    "DINO: Step 1 has no attention; use explicitly named patch-to-CLS cosine saliency proxy",
+    "Candidate h interpreted as foreground -4/background +1; unknown crop region gets zero",
+    "K=6 fallback violates inherited K>=8; retained K=8 pilot labels create mixed K if triggered",
+    "10-frame planning pilot requested; CONFIG F 200-image throughput prerequisite remains visible",
+    "Detector supervision is YOLO11-L on new reconstructions; no DINO/SAM reconstruction rescoring"
+  ],
+  "cpu_accounting_method": "process + waited child user/system time",
+  "cpu_hours": 3.6844583333333336,
+  "cpu_hours_definition": "process + waited child user/system CPU time; separate from GPU ceiling",
+  "cumulative_cpu_account": "/kaggle/working/tier1a/oracle/cpu_hours.json",
+  "cumulative_cpu_hours": 3.6844583333333336,
+  "cumulative_gpu_hours": 7.391200972255,
+  "current_label_candidate_totals": {
+    "decode_ok": 3020,
+    "fail": 0,
+    "frame_bits": 4985514416,
+    "not_attempted": 0,
+    "pass": 3020,
+    "whole_bitstream_bits": 5041734736,
+    "whole_bitstream_bytes": 630216842
+  },
+  "effective_k": 6,
+  "encode_manifest_counts": {
+    "calibration_probe": 0,
+    "evaluation": 0,
+    "gate0": 1,
+    "oracle_initial": 3020,
+    "oracle_refresh": 0
+  },
+  "expected_frames": 500,
+  "fail_frames": 0,
+  "gpu_devices": 2,
+  "gpu_hour_ceiling": 60,
+  "gpu_hours": 7.391200972255,
+  "honesty_checks": {
+    "detector_input": "every candidate decoded RGB; zero candidate reused as reference",
+    "failed_candidates_never_win": true,
+    "gpu_inference": true,
+    "raw_yuv_disk_writes": false,
+    "single_encode_per_candidate": true,
+    "stock_encodes_expected": 1,
+    "tier1a_gate_claimed": false,
+    "train_only": true,
+    "zero_sum_at_crf": false
+  },
+  "k_counts": {
+    "6": 490,
+    "8": 10
+  },
+  "lambda_R": 0.05,
+  "ledger_sha256": "d96dde1184b4cf5d3c9978a62a844e6a67651dd67a753aec32b68382cf7450f9",
+  "measured_cpu_hours": 3.6844583333333336,
+  "measurement_200": {
+    "config_f_200_image_measurement": true,
+    "encode_seconds_per_frame_k8": 23.843564233095144,
+    "end_to_end_seconds_per_candidate": 4.158111914059017,
+    "measured_frames": 200,
+    "projected_500x6_wall_hours": 4.331366577144809,
+    "projected_500x8_encode_hours": 3.3116061434854367,
+    "projected_500x8_wall_hours": 5.775155436193079,
+    "safety_factor": 1.25
+  },
+  "pass_frames": 500,
+  "pending_frames": 0,
+  "pilot_projection": {
+    "config_f_200_image_measurement": false,
+    "encode_seconds_per_frame_k8": 23.792558138000082,
+    "end_to_end_seconds_per_candidate": 4.293159272862502,
+    "measured_frames": 10,
+    "projected_500x6_wall_hours": 4.472040909231772,
+    "projected_500x8_encode_hours": 3.3045219636111223,
+    "projected_500x8_wall_hours": 5.962721212309031,
+    "safety_factor": 1.25,
+    "setup_seconds": 115.96149193299988
+  },
+  "prior_pilot_gpu_hours": 0.294,
+  "reduction": {
+    "after_frames": 10,
+    "config_c_k_min_exception": true,
+    "dropped_indices": [
+      6,
+      7
+    ],
+    "from": 8,
+    "pilot_k8_retained": true,
+    "reason": "Measured K8 projection exceeds job allowance",
+    "to": 6
+  },
+  "running_frames": 0,
+  "schema_version": 1,
+  "status": "PASS",
+  "total_pilot_gpu_hours": 7.685200972254999,
+  "wall_seconds": 13304.161750059,
+  "zero_stock_smoke": {
+    "sample_id": "2782",
+    "status": "PASS",
+    "stock_encode": {
+      "bits": 2621776,
+      "bitstream_path": "/kaggle/working/tier1a/oracle/frames/2782/9829573ab2b9d389/stock/frame.hevc",
+      "bitstream_sha256": "4dafd36379fda3d6f14b083ed1d35bdc4cecd865d9da19985b12c7ad1854d616",
+      "build_pin": {
+        "abi": 199,
+        "enable_assembly": false,
+        "library_sha256": "3aa75e2f483736deb3c533805a934feaa400353c8dd7b2427d6b6d236c465c09",
+        "picture_size": 16816,
+        "shim_sha256": "741e0d2caac2fa48d964992fd7c134a569cc9eb54202eac9b7ca3578779a4e86",
+        "version": "3.5"
+      },
+      "encode_seconds": 3.5260862490000022,
+      "encode_worker_seconds": 3.7638338919999796,
+      "encoder_parameters": "aq-mode=1\ncutree=0\nsao=1\nqg-size=16\nkeyint=1\nmin-keyint=1\nscenecut=0\nbframes=0\nfps=30\nrepeat-headers=1\nannexb=1\nframe-threads=1\npools=none\nwpp=0\ncsv=/kaggle/working/tier1a/oracle/frames/2782/9829573ab2b9d389/stock/frame.csv\ncsv-log-level=2\ncrf=20.0\naq-strength=1.0\nhevc-aq=0\nrc-lookahead=0\n",
+      "frame_bits": 2603160,
+      "whole_bitstream_bytes": 327722
+    },
+    "stock_sha256": "4dafd36379fda3d6f14b083ed1d35bdc4cecd865d9da19985b12c7ad1854d616",
+    "zero_sha256": "4dafd36379fda3d6f14b083ed1d35bdc4cecd865d9da19985b12c7ad1854d616"
+  }
+}

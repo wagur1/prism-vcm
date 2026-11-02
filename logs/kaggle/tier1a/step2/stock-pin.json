@@ -1,0 +1,8 @@
+{
+  "library_sha256": "3aa75e2f483736deb3c533805a934feaa400353c8dd7b2427d6b6d236c465c09",
+  "shim_sha256": "741e0d2caac2fa48d964992fd7c134a569cc9eb54202eac9b7ca3578779a4e86",
+  "version": "3.5",
+  "abi": 199,
+  "picture_size": 16816,
+  "enable_assembly": false
+}

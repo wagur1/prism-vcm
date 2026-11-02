@@ -1,0 +1,42 @@
+{
+  "instrument": "x265_prism_telemetry_v2",
+  "residual_instrument": "x265_prism_residual_v1",
+  "patch_audit": "v2 local 3.5 build validated; see gate0/PATCH_AUDIT.md; council review pending",
+  "enable_assembly": false,
+  "asm_decision_reason": "no usable NASM; recorded fallback per council 2026-11-01 (identical stock/patched flags; F0-scope only)",
+  "nasm_version": "none",
+  "repo_commit": "651ff4771bd5ccef4ed119c7bc5d12bb9d66388e",
+  "x265_tag": "3.5",
+  "x265_commit": "f0c1022b6be121a753ff02853fbe33da71988656",
+  "stock_commit": "f0c1022b6be121a753ff02853fbe33da71988656",
+  "hm_tag": "HM-16.2",
+  "hm_commit": "41801c786b2fb37dafc779f824b1f62fbe713bbe",
+  "patch_sha256": "88cb0bc98b415daf25bc43549c379a479a145128ef909f98701c912a7e2d7cd5",
+  "telemetry_patch_sha256": "4ad58dc315c7f77ae0294884351dd77718a12058743b420a0c2903d5f253f7ba",
+  "patch_order": [
+    "x265_residual_patch.patch",
+    "x265_residual_telemetry.patch"
+  ],
+  "hm_sha256": "7c14e313b479865cceafeeeb3cee4c5a85618177987a81cb3c0b5f4ddf3379bd",
+  "hm_compiler_policy": {
+    "source_tag": "HM-16.2",
+    "source_diff": "NONE",
+    "toolchain": "gcc-13.3.0",
+    "flags_override": {
+      "stripped": [
+        "-Werror"
+      ],
+      "added": [
+        "-Wno-error",
+        "-std=gnu++98"
+      ]
+    },
+    "rationale": "Toolchain diagnostic compatibility; zero code modification (council 20261101_025850)"
+  },
+  "hm_conformance_required": "decoder exit 0; cross-check reconstruction MD5 vs FFmpeg decode (SEIDecodedPictureHash) in full run",
+  "library": "/tmp/prism-vcm/gate0/build/x265/install/lib/libx265.so",
+  "shim": "/tmp/prism-vcm/gate0/build/shim/libprism_x265.so",
+  "stock_library": "/tmp/prism-vcm/gate0/build/stock/x265/install/lib/libx265.so",
+  "stock_shim": "/tmp/prism-vcm/gate0/build/stock/shim/libprism_x265.so",
+  "reference_decoder": "/tmp/prism-vcm/gate0/build/hm/bin/TAppDecoderStatic"
+}

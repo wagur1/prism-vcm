@@ -1,0 +1,17 @@
+{
+  "cpu_hours": 3.6844583333333336,
+  "gpu_hours": 7.391200972255,
+  "jobs": [
+    {
+      "conservative_termination_charge": false,
+      "cpu_hours": 3.6844583333333336,
+      "gpu_devices": 2,
+      "gpu_hours": 7.391200972255,
+      "measured_cpu_hours": 3.6844583333333336,
+      "status": "PASS",
+      "wall_seconds": 13304.161750059
+    }
+  ],
+  "prior_pilot_gpu_hours": 0.294,
+  "wall_hours": 3.6956004861275
+}
