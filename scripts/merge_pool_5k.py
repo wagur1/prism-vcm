@@ -46,13 +46,13 @@ def find_shard_reports(results_dir: Path) -> dict[int, Path]:
 
 def download_shard_outputs(pool_dir: Path, results_dir: Path, num_shards: int = 19) -> dict[int, Path]:
     """Download outputs from each Kaggle account in the pool."""
-    from scripts.dispatch_pool_5k import discover_pool_accounts
+    from scripts.dispatch_pool_5k import discover_pool_accounts, get_account_for_shard
     accounts = discover_pool_accounts(pool_dir)
     results_dir.mkdir(parents=True, exist_ok=True)
     downloaded = {}
 
     for s_idx in range(num_shards):
-        acc = accounts[s_idx % len(accounts)]
+        acc = get_account_for_shard(s_idx, accounts)
         kernel_id = f"{acc['username']}/prism-tier1b-shard{s_idx}"
         target_dir = results_dir / f"shard_{s_idx}"
         target_dir.mkdir(parents=True, exist_ok=True)

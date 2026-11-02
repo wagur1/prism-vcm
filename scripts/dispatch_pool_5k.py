@@ -47,114 +47,118 @@ def discover_pool_accounts(pool_dir: Path) -> list[dict]:
     return sorted(accounts, key=lambda a: a["username"])
 
 
+OVERRIDE_SHARD_ACCOUNTS = {
+    11: "huolgggnuyen",        # 29.99h GPU quota remaining
+    15: "nguyenhoanglan1232",  # 27.81h GPU quota remaining
+}
+
+
+def get_account_for_shard(shard_idx: int, accounts: list[dict]) -> dict:
+    """Resolve account for shard, applying quota overrides when needed."""
+    if shard_idx in OVERRIDE_SHARD_ACCOUNTS:
+        target_user = OVERRIDE_SHARD_ACCOUNTS[shard_idx]
+        for acc in accounts:
+            if acc["username"] == target_user:
+                return acc
+    return accounts[shard_idx % len(accounts)]
+
+
 def make_shard_runner_script(shard_idx: int, num_shards: int, repo_url: str = "https://github.com/wagur1/prism-vcm.git", branch: str = "main") -> str:
     """Generate the self-contained tier1b_shard.py script for Kaggle execution."""
     return f'''#!/usr/bin/env python3
-"""PRISM-VCM Tier 1b Shard {shard_idx} Runner on Kaggle.
-Evaluates shard {shard_idx}/{num_shards} of COCO val2017 (5,000 images).
-"""
-import glob
-import json
+"""PRISM-VCM Tier 1b Shard {shard_idx} Runner on Kaggle."""
 import os
-from pathlib import Path
-import shutil
 import subprocess
 import sys
-import time
 
-SHARD_IDX = {shard_idx}
-NUM_SHARDS = {num_shards}
-REPO_URL = "{repo_url}"
-BRANCH = "{branch}"
+cmd = r\'\'\'set -e
+LOG_FILE="/kaggle/working/shard_{shard_idx}.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
 
-print(f"=== [PRISM Tier 1b] Starting Shard {{SHARD_IDX}}/{{NUM_SHARDS}} ===", flush=True)
+echo "=== [PRISM Tier 1b] Shard {shard_idx}/{num_shards} START $(date -u +%FT%TZ) ==="
 
 # 1. Inspect Kaggle environment and locate inputs
-input_dir = Path("/kaggle/input")
-working_dir = Path("/kaggle/working")
-repo_dir = working_dir / "prism-vcm"
+echo "=== Scanning /kaggle/input ==="
+ANN_PATH=$(find /kaggle/input -name 'instances_val2017.json' 2>/dev/null | head -n 1)
+if [ -z "$ANN_PATH" ]; then
+    echo "ERROR: Could not locate instances_val2017.json"
+    exit 1
+fi
+echo "Located annotations: $ANN_PATH"
 
-# Locate annotations and images from awsaf49/coco-2017-dataset
-ann_matches = list(input_dir.glob("**/instances_val2017.json"))
-if not ann_matches:
-    raise FileNotFoundError("Could not locate instances_val2017.json in /kaggle/input")
-annotations_path = ann_matches[0]
-print(f"Located annotations: {{annotations_path}}", flush=True)
+VAL2017_DIR=$(find /kaggle/input -type d -name 'val2017' 2>/dev/null | head -n 1)
+if [ -z "$VAL2017_DIR" ]; then
+    echo "ERROR: Could not locate val2017 directory"
+    exit 1
+fi
+echo "Located images dir: $VAL2017_DIR"
 
-val2017_matches = [p for p in input_dir.glob("**/val2017") if p.is_dir() and not p.name.endswith(".json")]
-if not val2017_matches:
-    raise FileNotFoundError("Could not locate val2017/ directory in /kaggle/input")
-images_dir = val2017_matches[0]
-print(f"Located images: {{images_dir}}", flush=True)
-
-# Locate student checkpoints from htran123456/prism-tier1a-step3
-ckpt_matches = list(input_dir.glob("**/student_seed_0.pt"))
-if not ckpt_matches:
-    raise FileNotFoundError("Could not locate student checkpoints in /kaggle/input")
-checkpoints_dir = ckpt_matches[0].parent
-print(f"Located checkpoints: {{checkpoints_dir}}", flush=True)
+CKPT_PATH=$(find /kaggle/input -name 'student_seed_0.pt' 2>/dev/null | head -n 1)
+if [ -z "$CKPT_PATH" ]; then
+    echo "ERROR: Could not locate student_seed_0.pt"
+    exit 1
+fi
+CKPT_DIR=$(dirname "$CKPT_PATH")
+echo "Located checkpoints dir: $CKPT_DIR"
 
 # 2. Clone latest PRISM repo
-if repo_dir.exists():
-    shutil.rmtree(repo_dir)
-print(f"Cloning {{REPO_URL}} (branch: {{BRANCH}})...", flush=True)
-subprocess.run(["git", "clone", "--depth", "1", "-b", BRANCH, REPO_URL, str(repo_dir)], check=True)
+rm -rf /kaggle/working/prism-vcm
+echo "Cloning {repo_url} (branch: {branch})..."
+git clone --depth 1 -b {branch} {repo_url} /kaggle/working/prism-vcm
+cd /kaggle/working/prism-vcm
+
+# CRLF line ending fix
+sed -i 's/\\r$//' gate0/build_gate0_stack.sh
 
 # 3. Install dependencies
-subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "ultralytics", "timm", "pycocotools", "scipy"], check=True)
+echo "Installing dependencies..."
+pip install --quiet ultralytics timm pycocotools scipy
 
-# 4. Download / verify YOLOv11-L weights
-weights_path = working_dir / "yolo11l.pt"
-if not weights_path.exists():
-    print("Provisioning YOLO11-L weights...", flush=True)
-    yolo_matches = list(input_dir.glob("**/yolo11l.pt"))
-    if yolo_matches:
-        shutil.copy(yolo_matches[0], weights_path)
-    else:
-        from ultralytics import YOLO
-        model = YOLO("yolo11l.pt")
-        shutil.copy(Path(model.ckpt_path), weights_path)
-print(f"YOLO11-L weights ready: {{weights_path}}", flush=True)
+# 4. Provision YOLOv11-L weights
+mkdir -p /kaggle/working/cache/weights
+WEIGHTS_PATH="/kaggle/working/cache/weights/yolo11l.pt"
+if [ ! -f "$WEIGHTS_PATH" ]; then
+    echo "Downloading YOLO11-L weights..."
+    curl -sSL -f -o "$WEIGHTS_PATH" https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11l.pt || (python3 -c "from ultralytics import YOLO; YOLO('yolo11l.pt')" && mv -f yolo11l.pt "$WEIGHTS_PATH")
+fi
+echo "YOLO11-L weights ready at: $WEIGHTS_PATH"
 
 # 5. Build GATE-0 stack (ASM=ON)
-gate_dir = repo_dir / "gate0"
-print("Building GATE-0 x265 stack with NASM ASM=ON...", flush=True)
-build_env = os.environ.copy()
-build_env["GATE0_JOBS"] = "4"
-build_env["GATE0_PYTHON"] = sys.executable
-build_env["GATE0_ASSEMBLY"] = "ON"
-subprocess.run(["bash", str(gate_dir / "build_gate0_stack.sh")], cwd=str(repo_dir), env=build_env, check=True)
+echo "Building GATE-0 x265 stack with NASM ASM=ON..."
+export GATE0_JOBS=4
+export GATE0_PYTHON={sys.executable}
+export GATE0_ASSEMBLY=ON
+bash gate0/build_gate0_stack.sh
+echo "GATE-0 stack built successfully."
 
-with open(gate_dir / "stack.json") as f:
-    stack = json.load(f)
-print(f"GATE-0 stack verified: enable_assembly={{stack.get('enable_assembly')}}", flush=True)
+# 6. Execute run_tier1b_val5k.py
+OUTPUT_DIR="/kaggle/working/tier1b_output"
+mkdir -p "$OUTPUT_DIR"
 
-# 6. Execute run_tier1b_val5k.py for this shard
-output_dir = working_dir / "tier1b_output"
-output_dir.mkdir(parents=True, exist_ok=True)
+echo "Executing run_tier1b_val5k.py for shard {shard_idx}..."
+python3 -u tier1b/run_tier1b_val5k.py \\
+    --images-dir "$VAL2017_DIR" \\
+    --annotations "$ANN_PATH" \\
+    --checkpoints-dir "$CKPT_DIR" \\
+    --shard-idx {shard_idx} \\
+    --num-shards {num_shards} \\
+    --output "$OUTPUT_DIR" \\
+    --gate gate0 \\
+    --weights "$WEIGHTS_PATH" \\
+    --crfs 20 24 28 32 36
 
-cmd = [
-    sys.executable, str(repo_dir / "tier1b" / "run_tier1b_val5k.py"),
-    "--images-dir", str(images_dir),
-    "--annotations", str(annotations_path),
-    "--checkpoints-dir", str(checkpoints_dir),
-    "--shard-idx", str(SHARD_IDX),
-    "--num-shards", str(NUM_SHARDS),
-    "--output", str(output_dir),
-    "--gate", str(gate_dir),
-    "--weights", str(weights_path),
-    "--crfs", "20", "24", "28", "32", "36",
-]
-print(f"Executing: {{' '.join(cmd)}}", flush=True)
-subprocess.run(cmd, cwd=str(repo_dir), check=True)
+# Copy final report to /kaggle/working
+if [ -f "$OUTPUT_DIR/shard_{shard_idx}_report.json" ]; then
+    cp -f "$OUTPUT_DIR/shard_{shard_idx}_report.json" /kaggle/working/shard_{shard_idx}_report.json
+    echo "=== SUCCESS: shard_{shard_idx}_report.json created ($(stat -c%s /kaggle/working/shard_{shard_idx}_report.json) bytes) ==="
+else
+    echo "ERROR: Report file was not created!"
+    exit 1
+fi
+\'\'\'
 
-report_src = output_dir / f"shard_{{SHARD_IDX}}_report.json"
-report_dst = working_dir / f"shard_{{SHARD_IDX}}_report.json"
-if report_src.exists():
-    shutil.copy(report_src, report_dst)
-    print(f"SUCCESS! Shard {{SHARD_IDX}} report saved to {{report_dst}} ({{report_dst.stat().st_size}} bytes)", flush=True)
-else:
-    raise FileNotFoundError(f"Expected {{report_src}} was not created!")
+res = subprocess.run(["bash", "-c", cmd])
+sys.exit(res.returncode)
 '''
 
 
@@ -255,7 +259,7 @@ def main():
         print(f"{'Shard':<8} | {'Account':<20} | {'Status'}")
         print("-" * 65)
         for s_idx in target_shards:
-            acc = accounts[s_idx % len(accounts)]
+            acc = get_account_for_shard(s_idx, accounts)
             st = check_shard_status(s_idx, acc)
             print(f"Shard {s_idx:<2} | {acc['username']:<20} | {st['status']}")
         return
@@ -265,7 +269,7 @@ def main():
     if do_prepare:
         print(f"\n=== Preparing {len(target_shards)} Shard Kernels in {args.kernels_dir} ===")
         for s_idx in target_shards:
-            acc = accounts[s_idx % len(accounts)]
+            acc = get_account_for_shard(s_idx, accounts)
             shard_dir = args.kernels_dir / f"shard_{s_idx}"
             generate_shard_kernel(s_idx, args.num_shards, acc["username"], shard_dir)
             print(f"  [OK] Shard {s_idx:02d} -> {shard_dir} ({acc['username']})")
@@ -274,7 +278,7 @@ def main():
         print(f"\n=== Pushing {len(target_shards)} Shards to Kaggle ===")
         success_count = 0
         for s_idx in target_shards:
-            acc = accounts[s_idx % len(accounts)]
+            acc = get_account_for_shard(s_idx, accounts)
             shard_dir = args.kernels_dir / f"shard_{s_idx}"
             if push_shard_kernel(shard_dir, acc, dry_run=args.dry_run):
                 success_count += 1
