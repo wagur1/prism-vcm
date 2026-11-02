@@ -892,6 +892,10 @@ def main() -> int:
             m4_curves_per_img_by_seed = {seed: [] for seed in SEEDS}
             m4_curves_pooled_by_seed = {seed: [] for seed in SEEDS}
             m4_pooled_details = {str(seed): {} for seed in SEEDS}
+            m1_curve_pooled_ap_50_95 = []
+            m2_curves_pooled_ap_50_95_by_seed = {seed: [] for seed in SEEDS}
+            m3_curves_pooled_ap_50_95_by_seed = {seed: [] for seed in SEEDS}
+            m4_curves_pooled_ap_50_95_by_seed = {seed: [] for seed in SEEDS}
 
             for crf in CRF_GRID:
                 m1_bytes = sum(m1_obs[sid][crf]["whole_bitstream_bytes"] for sid in pilot_ids)
@@ -901,6 +905,7 @@ def main() -> int:
                 m1_pooled_details[str(crf)] = {**m1_pooled, "whole_bitstream_bytes": m1_bytes, "mean_per_image_ap50": m1_mean_ap50}
                 m1_curve_per_img.append({"qp": crf, "score": m1_mean_ap50, "bitstream_bytes": m1_bytes})
                 m1_curve_pooled.append({"qp": crf, "score": m1_pooled["ap50"], "bitstream_bytes": m1_bytes})
+                m1_curve_pooled_ap_50_95.append({"qp": crf, "score": m1_pooled["ap_50_95"], "bitstream_bytes": m1_bytes})
 
                 for seed in SEEDS:
                     # M2
@@ -911,6 +916,7 @@ def main() -> int:
                     m2_pooled_details[str(seed)][str(crf)] = {**s2_pooled, "whole_bitstream_bytes": s2_bytes, "mean_per_image_ap50": s2_mean_ap50}
                     m2_curves_per_img_by_seed[seed].append({"qp": crf, "score": s2_mean_ap50, "bitstream_bytes": s2_bytes})
                     m2_curves_pooled_by_seed[seed].append({"qp": crf, "score": s2_pooled["ap50"], "bitstream_bytes": s2_bytes})
+                    m2_curves_pooled_ap_50_95_by_seed[seed].append({"qp": crf, "score": s2_pooled["ap_50_95"], "bitstream_bytes": s2_bytes})
 
                     # M3
                     s3_bytes = sum(m3_obs[seed][sid][crf]["whole_bitstream_bytes"] for sid in pilot_ids)
@@ -920,6 +926,7 @@ def main() -> int:
                     m3_pooled_details[str(seed)][str(crf)] = {**s3_pooled, "whole_bitstream_bytes": s3_bytes, "mean_per_image_ap50": s3_mean_ap50}
                     m3_curves_per_img_by_seed[seed].append({"qp": crf, "score": s3_mean_ap50, "bitstream_bytes": s3_bytes})
                     m3_curves_pooled_by_seed[seed].append({"qp": crf, "score": s3_pooled["ap50"], "bitstream_bytes": s3_bytes})
+                    m3_curves_pooled_ap_50_95_by_seed[seed].append({"qp": crf, "score": s3_pooled["ap_50_95"], "bitstream_bytes": s3_bytes})
 
                     # M4
                     s4_bytes = sum(m4_obs[seed][sid][crf]["whole_bitstream_bytes"] for sid in pilot_ids)
@@ -929,32 +936,39 @@ def main() -> int:
                     m4_pooled_details[str(seed)][str(crf)] = {**s4_pooled, "whole_bitstream_bytes": s4_bytes, "mean_per_image_ap50": s4_mean_ap50}
                     m4_curves_per_img_by_seed[seed].append({"qp": crf, "score": s4_mean_ap50, "bitstream_bytes": s4_bytes})
                     m4_curves_pooled_by_seed[seed].append({"qp": crf, "score": s4_pooled["ap50"], "bitstream_bytes": s4_bytes})
+                    m4_curves_pooled_ap_50_95_by_seed[seed].append({"qp": crf, "score": s4_pooled["ap_50_95"], "bitstream_bytes": s4_bytes})
 
             # Mean M2, M3, M4 curves across the 3 seeds
-            m2_mean_curve_per_img, m2_mean_curve_pooled = [], []
-            m3_mean_curve_per_img, m3_mean_curve_pooled = [], []
-            m4_mean_curve_per_img, m4_mean_curve_pooled = [], []
+            m2_mean_curve_per_img, m2_mean_curve_pooled, m2_mean_curve_pooled_ap_50_95 = [], [], []
+            m3_mean_curve_per_img, m3_mean_curve_pooled, m3_mean_curve_pooled_ap_50_95 = [], [], []
+            m4_mean_curve_per_img, m4_mean_curve_pooled, m4_mean_curve_pooled_ap_50_95 = [], [], []
             for idx_c, crf in enumerate(CRF_GRID):
                 # M2
                 b2 = int(round(np.mean([m2_curves_per_img_by_seed[s][idx_c]["bitstream_bytes"] for s in SEEDS])))
                 s2_img = float(np.mean([m2_curves_per_img_by_seed[s][idx_c]["score"] for s in SEEDS]))
                 s2_pol = float(np.mean([m2_curves_pooled_by_seed[s][idx_c]["score"] for s in SEEDS]))
+                s2_pol_95 = float(np.mean([m2_curves_pooled_ap_50_95_by_seed[s][idx_c]["score"] for s in SEEDS]))
                 m2_mean_curve_per_img.append({"qp": crf, "score": s2_img, "bitstream_bytes": b2})
                 m2_mean_curve_pooled.append({"qp": crf, "score": s2_pol, "bitstream_bytes": b2})
+                m2_mean_curve_pooled_ap_50_95.append({"qp": crf, "score": s2_pol_95, "bitstream_bytes": b2})
 
                 # M3
                 b3 = int(round(np.mean([m3_curves_per_img_by_seed[s][idx_c]["bitstream_bytes"] for s in SEEDS])))
                 s3_img = float(np.mean([m3_curves_per_img_by_seed[s][idx_c]["score"] for s in SEEDS]))
                 s3_pol = float(np.mean([m3_curves_pooled_by_seed[s][idx_c]["score"] for s in SEEDS]))
+                s3_pol_95 = float(np.mean([m3_curves_pooled_ap_50_95_by_seed[s][idx_c]["score"] for s in SEEDS]))
                 m3_mean_curve_per_img.append({"qp": crf, "score": s3_img, "bitstream_bytes": b3})
                 m3_mean_curve_pooled.append({"qp": crf, "score": s3_pol, "bitstream_bytes": b3})
+                m3_mean_curve_pooled_ap_50_95.append({"qp": crf, "score": s3_pol_95, "bitstream_bytes": b3})
 
                 # M4
                 b4 = int(round(np.mean([m4_curves_per_img_by_seed[s][idx_c]["bitstream_bytes"] for s in SEEDS])))
                 s4_img = float(np.mean([m4_curves_per_img_by_seed[s][idx_c]["score"] for s in SEEDS]))
                 s4_pol = float(np.mean([m4_curves_pooled_by_seed[s][idx_c]["score"] for s in SEEDS]))
+                s4_pol_95 = float(np.mean([m4_curves_pooled_ap_50_95_by_seed[s][idx_c]["score"] for s in SEEDS]))
                 m4_mean_curve_per_img.append({"qp": crf, "score": s4_img, "bitstream_bytes": b4})
                 m4_mean_curve_pooled.append({"qp": crf, "score": s4_pol, "bitstream_bytes": b4})
+                m4_mean_curve_pooled_ap_50_95.append({"qp": crf, "score": s4_pol_95, "bitstream_bytes": b4})
 
             # Paired cluster bootstrap (resamples=2000, unit="image") for M4-vs-M1 and M2-vs-M1
             boot_data_m2_vs_m1 = {
@@ -1044,8 +1058,21 @@ def main() -> int:
                 holm_results=eval_pooled["holm_family"],
             )
 
+            eval_pooled_ap_50_95 = evaluate({
+                "rc_mode": "CRF",
+                "same_gop_and_tools": True,
+                "curves": {
+                    "M1": m1_curve_pooled_ap_50_95,
+                    "M2": m2_mean_curve_pooled_ap_50_95,
+                    "M3": m3_mean_curve_pooled_ap_50_95,
+                    "M4": m4_mean_curve_pooled_ap_50_95,
+                },
+                "p_values": p_family_10,
+            })
+
             detector_reports[det_key] = {
                 "pooled_evaluation": eval_pooled,
+                "pooled_ap_50_95_evaluation": eval_pooled_ap_50_95,
                 "per_image_mean_evaluation": eval_per_img,
                 "bootstrap_m2_vs_m1_per_image": boot_m2_vs_m1,
                 "holm_m2_vs_m1_5crf": holm_bonferroni(p_m2_vs_m1),
