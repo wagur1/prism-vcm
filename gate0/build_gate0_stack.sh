@@ -146,7 +146,7 @@ fi
 
 NASM_ARGS=()
 if [[ $ASM == ON ]]; then
-    NASM_ARGS=(-DNASM_EXECUTABLE="$(command -v nasm)" -DCMAKE_ASM_NASM_COMPILER="$(command -v nasm)")
+    NASM_ARGS=(-DNASM_EXECUTABLE="$(command -v nasm)" -DCMAKE_ASM_NASM_COMPILER="$(command -v nasm)" -DCMAKE_ASM_NASM_FLAGS="-w-macro-params-legacy")
 fi
 
 build_x265() {
