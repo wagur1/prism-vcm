@@ -15,14 +15,15 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+import warnings
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 import numpy as np
 
-from prism.evaluation.metrics import bjontegaard_bd_rate, pava_pchip_bd_rate
-from tier1a.common import read_json, write_json
+from prism.evaluation.metrics import RDPoint, bjontegaard_bd_rate, pava_pchip_bd_rate
+from tier1a.common import read_json, sha256, write_json
 from tier1a.step3_detectors import evaluate_pooled_coco_metrics
 
 DEFAULT_RESULTS_DIR = Path("C:/Users/Wagur1/Desktop/HOI_DONG_9/results_tier1b")
@@ -33,14 +34,21 @@ DETECTORS = ("yolo11l", "faster_rcnn")
 
 
 def find_shard_reports(results_dir: Path) -> dict[int, Path]:
-    """Locate all shard_{i}_report.json files under results_dir."""
+    """Locate reports, rejecting conflicting copies of the same shard."""
     found = {}
     for p in results_dir.glob("**/shard_*_report.json"):
         stem = p.name.replace(".json", "")
         parts = stem.split("_")
         if len(parts) >= 2 and parts[1].isdigit():
             shard_idx = int(parts[1])
-            found[shard_idx] = p
+            if shard_idx in found:
+                if sha256(found[shard_idx]) != sha256(p):
+                    raise ValueError(f"Conflicting reports for shard {shard_idx}")
+                canonical = results_dir / f"shard_{shard_idx}" / p.name
+                if p == canonical:
+                    found[shard_idx] = p
+            else:
+                found[shard_idx] = p
     return dict(sorted(found.items()))
 
 
@@ -74,8 +82,10 @@ def download_shard_outputs(pool_dir: Path, results_dir: Path, num_shards: int = 
     return downloaded
 
 
-def merge_shard_data(shard_reports: dict[int, Path], expected_num_shards: int = 19) -> tuple[dict, list[dict]]:
+def merge_shard_data(shard_reports: dict[int, Path], expected_num_shards: int = 19) -> tuple[dict, list[dict], list[int]]:
     """Verify disjoint union of images and merge observation rows."""
+    if set(shard_reports) != set(range(expected_num_shards)):
+        raise ValueError(f"Expected exactly shards 0..{expected_num_shards - 1}")
     all_observations = []
     seen_image_ids = set()
     total_images_in_shards = 0
@@ -83,6 +93,8 @@ def merge_shard_data(shard_reports: dict[int, Path], expected_num_shards: int = 
 
     for s_idx, path in sorted(shard_reports.items()):
         data = read_json(path)
+        if data.get("shard_idx", s_idx) != s_idx:
+            raise ValueError(f"Shard index mismatch in {path}")
         metadata_list.append({
             "shard_idx": data.get("shard_idx", s_idx),
             "image_count": len(data.get("image_ids", [])),
@@ -90,6 +102,8 @@ def merge_shard_data(shard_reports: dict[int, Path], expected_num_shards: int = 
             "path": str(path),
         })
         shard_ids = set(data.get("image_ids", []))
+        if not shard_ids or len(shard_ids) != len(data["image_ids"]):
+            raise ValueError(f"Shard {s_idx} has missing or duplicate image IDs")
         overlap = seen_image_ids.intersection(shard_ids)
         if overlap:
             raise ValueError(f"Shard {s_idx} contains overlapping images already seen: {overlap}")
@@ -174,10 +188,6 @@ def compute_rd_and_bd_rates(
         m1_pts = curves[(det, "M1", None)]
         if len(m1_pts) < 4:
             continue
-        r_m1 = [p["bytes"] for p in m1_pts]
-        d_m1_map = [p["ap_50_95"] for p in m1_pts]
-        d_m1_ap50 = [p["ap50"] for p in m1_pts]
-
         for cand_model in ("M2", "M3", "M4"):
             results["bd_rates"][det][cand_model] = {}
             seed_bd_map_bjontegaard = []
@@ -189,16 +199,24 @@ def compute_rd_and_bd_rates(
                 cand_pts = curves.get((det, cand_model, seed), [])
                 if len(cand_pts) < 4:
                     continue
-                r_cand = [p["bytes"] for p in cand_pts]
-                d_cand_map = [p["ap_50_95"] for p in cand_pts]
-                d_cand_ap50 = [p["ap50"] for p in cand_pts]
+                def evaluate_bd(function, metric):
+                    anchor = [RDPoint(p["crf"], p[metric], p["bytes"]) for p in m1_pts]
+                    candidate = [RDPoint(p["crf"], p[metric], p["bytes"]) for p in cand_pts]
+                    if any(not 0 <= p.score <= 1 for p in anchor + candidate):
+                        return None
+                    try:
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("error")
+                            result = function(anchor, candidate)
+                        value = result.get("bd_rate")
+                        return float(value) if result.get("valid") and value is not None and np.isfinite(value) else None
+                    except (ValueError, ArithmeticError, Warning, np.linalg.LinAlgError):
+                        return None
 
-                # Bjontegaard
-                bd_m_bj = bjontegaard_bd_rate(r_m1, d_m1_map, r_cand, d_cand_map)
-                bd_50_bj = bjontegaard_bd_rate(r_m1, d_m1_ap50, r_cand, d_cand_ap50)
-                # PAVA-PCHIP
-                bd_m_pava = pava_pchip_bd_rate(r_m1, d_m1_map, r_cand, d_cand_map)
-                bd_50_pava = pava_pchip_bd_rate(r_m1, d_m1_ap50, r_cand, d_cand_ap50)
+                bd_m_bj = evaluate_bd(bjontegaard_bd_rate, "ap_50_95")
+                bd_50_bj = evaluate_bd(bjontegaard_bd_rate, "ap50")
+                bd_m_pava = evaluate_bd(pava_pchip_bd_rate, "ap_50_95")
+                bd_50_pava = evaluate_bd(pava_pchip_bd_rate, "ap50")
 
                 seed_entry = {
                     "seed": seed,
@@ -213,12 +231,15 @@ def compute_rd_and_bd_rates(
                 if bd_50_bj is not None: seed_bd_ap50_bjontegaard.append(bd_50_bj)
                 if bd_50_pava is not None: seed_bd_ap50_pava.append(bd_50_pava)
 
-            # Average across seeds
+            # Require every seed: undefined curves must not silently disappear.
+            def seed_mean(values):
+                return float(np.mean(values)) if len(values) == len(available_seeds) else None
+
             results["bd_rates"][det][cand_model]["mean"] = {
-                "bjontegaard_bd_rate_map": float(np.mean(seed_bd_map_bjontegaard)) if seed_bd_map_bjontegaard else None,
-                "bjontegaard_bd_rate_ap50": float(np.mean(seed_bd_ap50_bjontegaard)) if seed_bd_ap50_bjontegaard else None,
-                "pava_pchip_bd_rate_map": float(np.mean(seed_bd_map_pava)) if seed_bd_map_pava else None,
-                "pava_pchip_bd_rate_ap50": float(np.mean(seed_bd_ap50_pava)) if seed_bd_ap50_pava else None,
+                "bjontegaard_bd_rate_map": seed_mean(seed_bd_map_bjontegaard),
+                "bjontegaard_bd_rate_ap50": seed_mean(seed_bd_ap50_bjontegaard),
+                "pava_pchip_bd_rate_map": seed_mean(seed_bd_map_pava),
+                "pava_pchip_bd_rate_ap50": seed_mean(seed_bd_ap50_pava),
             }
 
     return results
@@ -273,6 +294,8 @@ def main():
 
     print(f"Found {len(shard_reports)} shard reports in {args.results_dir}")
     summary, all_observations, image_ids = merge_shard_data(shard_reports, args.num_shards)
+    if len(image_ids) != 5000:
+        raise ValueError(f"Expected 5,000 images, found {len(image_ids)}")
 
     coco = None
     if args.annotations and args.annotations.is_file():
@@ -281,6 +304,10 @@ def main():
         coco = COCO(str(args.annotations))
 
     if coco:
+        if set(image_ids) != set(coco.getImgIds()):
+            raise ValueError("Shard coverage differs from annotation image IDs")
+        from tier1b.run_tier1b_val5k import validate_observations
+        validate_observations(all_observations, image_ids, CRF_GRID, set(coco.getCatIds()))
         results = compute_rd_and_bd_rates(all_observations, coco, image_ids)
         print_summary_table(results, summary)
     else:

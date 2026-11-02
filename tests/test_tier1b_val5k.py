@@ -129,8 +129,8 @@ def test_kernel_generation(tmp_path: Path):
     runner_path = shard_dir / "tier1b_shard.py"
     assert runner_path.is_file()
     content = runner_path.read_text(encoding="utf-8")
-    assert "SHARD_IDX = 3" in content
-    assert "NUM_SHARDS = 19" in content
+    assert "--shard-idx 3" in content
+    assert "--num-shards 19" in content
 
 
 def test_merge_shard_data(tmp_path: Path):

@@ -43,6 +43,7 @@ codec tests skip when their dependencies are absent.
 | Raw PCHIP / cluster bootstrap / Holm | `prism/evaluation/` |
 | M1–M4 / experiment matrices | `baselines/`, `configs/`, `prism/codec/configs/` |
 | CPU smoke CI | `.github/workflows/smoke.yml` |
+| Paper figures/tables and Tier 1b harvesting | [Usage and metric conventions](docs/PAPER_ARTIFACTS.md) |
 
 The requested model skeleton is present, but GATE 0 **PASSED** (frozen criteria v3, 6/6 conditions)
 — training unlock sequencing per CONFIG §H and real source SHA lists are frozen. This differs
