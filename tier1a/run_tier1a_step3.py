@@ -149,10 +149,12 @@ def build_spatial_oracle_target(
     height: int = 1080,
 ) -> dict:
     """Construct zero-mean spatial target on the known teacher crop for L_align."""
-    if candidates_hash(maps) != label_row["candidates_sha256"]:
+    k = int(label_row.get("candidate_count", len(label_row.get("candidates", len(maps)))))
+    active_maps = maps[:k]
+    if candidates_hash(active_maps) != label_row["candidates_sha256"]:
         raise ValueError(f"Candidate maps hash mismatch for sample {label_row['sample_id']}")
     winner_idx = select_spatial_winner(label_row["candidates"], SPATIAL_CANDIDATE_INDICES)
-    raw_winner_map = np.asarray(maps[winner_idx], dtype=np.float32)
+    raw_winner_map = np.asarray(active_maps[winner_idx], dtype=np.float32)
     weights = qg_area_weights(width, height)
     centered_target = project_zero_mean_qp_map(
         raw_winner_map,
