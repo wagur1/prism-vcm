@@ -59,7 +59,7 @@ def download_shard_outputs(pool_dir: Path, results_dir: Path, num_shards: int = 
         print(f"[{acc['username']}] Downloading output for {kernel_id} to {target_dir}...", flush=True)
 
         env = os.environ.copy()
-        env["KAGGLE_CONFIG_DIR"] = str(acc["dir"])
+        env["KAGGLE_API_TOKEN"] = str(acc["key"])
         cmd = [sys.executable, "-m", "kaggle", "kernels", "output", kernel_id, "-p", str(target_dir)]
         try:
             subprocess.run(cmd, env=env, check=True, capture_output=True, text=True)
