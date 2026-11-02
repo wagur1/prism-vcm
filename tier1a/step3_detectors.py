@@ -24,7 +24,8 @@ from tier1a.oracle_detector import COCO_IDS, CocoAP50, source_box
 COCO_ID_SET = frozenset(COCO_IDS)
 
 
-def evaluate_per_image_ap50(coco, image_id: int, rows: list[dict]) -> float:
+def evaluate_per_image_ap50(coco, image_id: int, rows: list[dict], *,
+                           allow_undefined: bool = False) -> float | None:
     from pycocotools.coco import COCO
     from pycocotools.cocoeval import COCOeval
 
@@ -50,6 +51,8 @@ def evaluate_per_image_ap50(coco, image_id: int, rows: list[dict]) -> float:
     precision = evaluator.eval["precision"][0, :, :, 0, 2]
     valid = precision[precision >= 0]
     if not len(valid):
+        if allow_undefined:
+            return None
         raise ValueError(f"Image {image_id} has no evaluable non-ignored GT; D undefined")
     return float(valid.mean())
 
@@ -229,11 +232,14 @@ class DualDetectorScorer:
                 })
         return rows
 
-    def score_both(self, rgb: np.ndarray, frame: dict) -> dict:
+    def score_both(self, rgb: np.ndarray, frame: dict, *, allow_undefined_ap50: bool = False) -> dict:
         image_id = int(frame["image_id"])
         yolo_rows = self.predict_yolo_rows(rgb, frame)
-        yolo_ap50 = evaluate_per_image_ap50(self.coco, image_id, yolo_rows)
-        frcnn_ap50, frcnn_rows = self.frcnn.score_frame(rgb, frame)
+        yolo_ap50 = evaluate_per_image_ap50(self.coco, image_id, yolo_rows,
+                                           allow_undefined=allow_undefined_ap50)
+        frcnn_rows = self.frcnn.predict_rows(rgb, frame)
+        frcnn_ap50 = evaluate_per_image_ap50(self.coco, image_id, frcnn_rows,
+                                            allow_undefined=allow_undefined_ap50)
         return {
             "yolo11l": {"ap50": yolo_ap50, "rows": yolo_rows},
             "faster_rcnn": {"ap50": frcnn_ap50, "rows": frcnn_rows},
