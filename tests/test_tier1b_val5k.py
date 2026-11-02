@@ -122,7 +122,7 @@ def test_kernel_generation(tmp_path: Path):
     with open(metadata_path) as f:
         meta = json.load(f)
     assert meta["id"] == "test_user/prism-tier1b-shard3"
-    assert meta["enable_gpu"] == "true"
+    assert meta["enable_gpu"] is True
     assert "awsaf49/coco-2017-dataset" in meta["dataset_sources"]
     assert "htran123456/prism-tier1a-step3" in meta["kernel_sources"]
 

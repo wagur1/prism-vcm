@@ -168,10 +168,10 @@ def generate_shard_kernel(shard_idx: int, num_shards: int, username: str, target
         "code_file": "tier1b_shard.py",
         "language": "python",
         "kernel_type": "script",
-        "is_private": "true",
-        "enable_gpu": "true",
-        "enable_tpu": "false",
-        "enable_internet": "true",
+        "is_private": True,
+        "enable_gpu": True,
+        "enable_tpu": False,
+        "enable_internet": True,
         "dataset_sources": [
             "awsaf49/coco-2017-dataset"
         ],
