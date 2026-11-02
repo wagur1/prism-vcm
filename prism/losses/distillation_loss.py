@@ -1,4 +1,4 @@
-"""DINO cosine applies to differentiable features of x_raw + delta_x, pre-codec."""
+"""DINO distillation on differentiable virtual-codec reconstructions."""
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -30,10 +30,15 @@ class DistillationLoss(nn.Module):
                 oracle_qp: Tensor, dino_target: Tensor,
                 semantic_encoder: Callable[[Tensor], Tensor], rate: Tensor,
                 non_reference_b: Tensor | None = None,
-                background: Tensor | None = None) -> dict[str, Tensor]:
+                background: Tensor | None = None,
+                x_reconstructed: Tensor | None = None) -> dict[str, Tensor]:
         # x_raw is RGB in pixel units; residual is shared luma delta in pixel units.
         # Freeze semantic-encoder weights, but retain its input gradient to delta-x.
-        features = semantic_encoder(x_raw + residual)
+        # Pass DVC(x_raw + residual)["reconstruction"] to supervise codec damage,
+        # including at residual=0. Keep its existing graph all the way to residual.
+        # Legacy callers may instead compose DVC into semantic_encoder themselves.
+        semantic_input = x_raw + residual if x_reconstructed is None else x_reconstructed
+        features = semantic_encoder(semantic_input)
         if features.shape != dino_target.shape or features.shape[-1] != 768:
             raise ValueError("Expected matching DINOv2-Base features with embedding dimension 768")
         semantic = (1.0 - F.cosine_similarity(features, dino_target.detach(), dim=-1)).mean()
