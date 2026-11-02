@@ -126,7 +126,7 @@ echo "YOLO11-L weights ready at: $WEIGHTS_PATH"
 # 5. Build GATE-0 stack (ASM=ON)
 echo "Building GATE-0 x265 stack with NASM ASM=ON..."
 export GATE0_JOBS=4
-export GATE0_PYTHON={sys.executable}
+export GATE0_PYTHON=python3
 export GATE0_ASSEMBLY=ON
 bash gate0/build_gate0_stack.sh
 echo "GATE-0 stack built successfully."
