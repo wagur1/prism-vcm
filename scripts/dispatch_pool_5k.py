@@ -77,23 +77,32 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 
 echo "=== [PRISM Tier 1b] Shard {shard_idx}/{num_shards} START $(date -u +%FT%TZ) ==="
 
-# 1. Inspect Kaggle environment and locate inputs
+# 1. Inspect Kaggle environment and locate inputs with mount retry loop
 echo "=== Scanning /kaggle/input ==="
-ANN_PATH=$(find /kaggle/input -name 'instances_val2017.json' 2>/dev/null | head -n 1)
+for i in $(seq 1 15); do
+    ANN_PATH=$(find /kaggle/input -name 'instances_val2017.json' 2>/dev/null | head -n 1)
+    VAL2017_DIR=$(find /kaggle/input -type d -name 'val2017' 2>/dev/null | head -n 1)
+    CKPT_PATH=$(find /kaggle/input -name 'student_seed_0.pt' 2>/dev/null | head -n 1)
+    if [ -n "$ANN_PATH" ] && [ -n "$VAL2017_DIR" ] && [ -n "$CKPT_PATH" ]; then
+        break
+    fi
+    echo "[$i/15] Waiting for /kaggle/input datasets to mount (ann: $ANN_PATH, val: $VAL2017_DIR, ckpt: $CKPT_PATH)..."
+    sleep 5
+done
+
 if [ -z "$ANN_PATH" ]; then
     echo "ERROR: Could not locate instances_val2017.json"
+    ls -la /kaggle/input
     exit 1
 fi
 echo "Located annotations: $ANN_PATH"
 
-VAL2017_DIR=$(find /kaggle/input -type d -name 'val2017' 2>/dev/null | head -n 1)
 if [ -z "$VAL2017_DIR" ]; then
     echo "ERROR: Could not locate val2017 directory"
     exit 1
 fi
 echo "Located images dir: $VAL2017_DIR"
 
-CKPT_PATH=$(find /kaggle/input -name 'student_seed_0.pt' 2>/dev/null | head -n 1)
 if [ -z "$CKPT_PATH" ]; then
     echo "ERROR: Could not locate student_seed_0.pt"
     exit 1
