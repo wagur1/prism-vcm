@@ -37,6 +37,39 @@ COLORS = ("black", "#0072B2", "#009E73", "#C62828")
 METHODS = {"bjontegaard": bjontegaard_bd_rate, "pava_pchip": pava_pchip_bd_rate}
 METRICS = {"map": "ap_50_95", "ap50": "ap50"}
 
+MODEL_LABELS = {
+    "M1": "M1: Stock x265",
+    "M2": "M2: Spatial QP (Zero-mean)",
+    "M2_asym": "M2: Asymmetric [-4, 6]",
+    "M2_asym_prefilter": "M2: Asym + Prefilter",
+    "M3": r"M3: $\Delta_x$ only",
+    "M4": "M4: PRISM-VCM Coupled",
+}
+MODEL_COLORS = {
+    "M1": "black",
+    "M2": "#0072B2",
+    "M2_asym": "#009E73",
+    "M2_asym_prefilter": "#D55E00",
+    "M3": "#009E73",
+    "M4": "#C62828",
+}
+
+
+def detect_models(report: dict) -> tuple[str, ...]:
+    if "detectors" in report:
+        return MODELS
+    if "metrics" in report.get("results", {}):
+        found = set()
+        for det in DETECTORS:
+            for key in report["results"]["metrics"].get(det, {}).keys():
+                match = re.fullmatch(r"([A-Za-z0-9_]+?)(?:_seed\d+)?_crf\d+", key)
+                if match:
+                    found.add(match.group(1))
+        order = ("M1", "M2", "M2_asym", "M2_asym_prefilter", "M3", "M4")
+        res = tuple(m for m in order if m in found)
+        return res if res else tuple(sorted(found))
+    return MODELS
+
 
 def finite_number(value):
     """JSON-safe numeric value; invalid BD result objects remain unavailable."""
@@ -51,20 +84,23 @@ def finite_number(value):
 
 def normalize_report(report: dict) -> dict:
     """Return detector -> model -> seed -> CRF -> pooled metrics for both schemas."""
-    curves = {det: {model: {} for model in MODELS} for det in DETECTORS}
+    active_models = detect_models(report)
+    curves = {det: {model: {} for model in active_models} for det in DETECTORS}
     if "detectors" in report:
         for det in DETECTORS:
             source = report["detectors"][det]
             curves[det]["M1"][None] = source["m1_pooled_by_crf"]
-            for model in MODELS[1:]:
+            for model in active_models[1:]:
                 curves[det][model] = dict(source[f"{model.lower()}_pooled_by_seed_and_crf"])
     elif "metrics" in report.get("results", {}):
         for det in DETECTORS:
             for key, row in report["results"]["metrics"][det].items():
-                match = re.fullmatch(r"(M[1-4])(?:_seed(\d+))?_crf(\d+)", key)
+                match = re.fullmatch(r"([A-Za-z0-9_]+?)(?:_seed(\d+))?_crf(\d+)", key)
                 if not match:
                     raise ValueError(f"Unrecognized metric key: {det}/{key}")
                 model, seed, crf = match.groups()
+                if model not in active_models:
+                    continue
                 if (model == "M1") != (seed is None):
                     raise ValueError(f"Incorrect seed for {key}")
                 curves[det][model].setdefault(seed, {})[crf] = row
@@ -73,7 +109,7 @@ def normalize_report(report: dict) -> dict:
 
     for det in DETECTORS:
         seed_sets = []
-        for model in MODELS:
+        for model in active_models:
             seeds = curves[det][model]
             if not seeds:
                 raise ValueError(f"No pooled metrics for {det}/{model}")
@@ -98,7 +134,7 @@ def normalize_report(report: dict) -> dict:
                 seeds[seed] = normalized
         if any(seeds != seed_sets[0] for seeds in seed_sets[1:]):
             raise ValueError(f"Models have inconsistent seeds for {det}")
-    if any(set(curves[DETECTORS[0]][m]) != set(curves[DETECTORS[1]][m]) for m in MODELS):
+    if any(set(curves[DETECTORS[0]][m]) != set(curves[DETECTORS[1]][m]) for m in active_models):
         raise ValueError("Detectors have inconsistent seeds")
     return curves
 
@@ -120,9 +156,10 @@ def compute_bd_rates(curves: dict, report: dict) -> dict:
     """Use recorded Tier 1b values when present; otherwise compute from pooled AP."""
     output = {}
     recorded = report.get("results", {}).get("bd_rates", {})
+    active_models = tuple(curves[DETECTORS[0]].keys())
     for det in DETECTORS:
         output[det] = {}
-        for model in MODELS[1:]:
+        for model in [m for m in active_models if m != "M1"]:
             output[det][model] = {}
             saved = recorded.get(det, {}).get(model, {}).get("mean", {})
             for method, function in METHODS.items():
@@ -171,24 +208,29 @@ def plot_rd_curves(means: dict, output_dir: Path):
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
 
+    active_models = tuple(means[DETECTORS[0]].keys())
+    colors = [MODEL_COLORS.get(m, "#333333") for m in active_models]
+    labels = [MODEL_LABELS.get(m, m) for m in active_models]
+
     fig, axes = plt.subplots(1, 2, figsize=(6.75, 3.5), sharey=True)
     for ax, det, title in zip(axes, DETECTORS,
                               ("YOLOv11-L (Target Detector)", "Faster R-CNN (Cross-Detector Transfer)")):
-        for i, model in enumerate(MODELS):
+        for i, model in enumerate(active_models):
             points = sorted(means[det][model].values(), key=lambda p: p["bytes"])
-            for metric, marker, fill in (("ap50", "o", COLORS[i]), ("ap_50_95", "s", "white")):
+            for metric, marker, fill in (("ap50", "o", colors[i]), ("ap_50_95", "s", "white")):
                 ax.plot([p["bytes"] * 8 for p in points],
                         [p[metric] * 100 if p[metric] is not None else np.nan for p in points],
-                        color=COLORS[i], linestyle="--" if model == "M1" else "-",
-                        linewidth=2 if model == "M4" else 1.1,
+                        color=colors[i], linestyle="--" if model == "M1" else "-",
+                        linewidth=2 if ("4" in model or "prefilter" in model) else 1.1,
                         marker=marker, markerfacecolor=fill, markersize=3.5)
         ax.set_title(title)
         ax.set_xlabel("Bitrate (bits over evaluation set)")
         ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useMathText=True)
     axes[0].set_ylabel("Detection AP (%)")
     handles = [Line2D([], [], color=c, linestyle="--" if i == 0 else "-",
-                      linewidth=2 if i == 3 else 1.1, label=label)
-               for i, (c, label) in enumerate(zip(COLORS, LABELS))]
+                      linewidth=2 if ("4" in active_models[i] or "prefilter" in active_models[i]) else 1.1,
+                      label=label)
+               for i, (c, label) in enumerate(zip(colors, labels))]
     handles += [Line2D([], [], color="gray", marker="o", linestyle="", label="AP50"),
                 Line2D([], [], color="gray", marker="s", markerfacecolor="white", linestyle="",
                        label="AP@[.50:.95]")]
@@ -202,21 +244,23 @@ def plot_bd_rates(bd_rates: dict, output_dir: Path):
     import matplotlib.pyplot as plt
     from matplotlib.patches import Patch
 
+    cand_models = tuple(m for m in bd_rates[DETECTORS[0]].keys() if m != "M1")
     fig, axes = plt.subplots(2, 2, figsize=(6.75, 4.6), sharex=True)
     for row, (suffix, metric_label) in enumerate((("map", "AP@[.50:.95]"), ("ap50", "AP50"))):
         for col, (det, det_label) in enumerate(zip(DETECTORS, ("YOLOv11-L", "Faster R-CNN"))):
             ax = axes[row, col]
-            for i, model in enumerate(MODELS[1:]):
+            for i, model in enumerate(cand_models):
+                color = MODEL_COLORS.get(model, "#333333")
                 for j, method in enumerate(METHODS):
                     value = bd_rates[det][model][f"{method}_bd_rate_{suffix}"]
                     x = i + (j - 0.5) * 0.34
                     if value is None:
                         ax.text(x, 0, "N/A", ha="center", va="bottom", rotation=90, fontsize=6)
                     else:
-                        ax.bar(x, value, width=0.30, color=COLORS[i + 1],
+                        ax.bar(x, value, width=0.30, color=color,
                                hatch="///" if j else None, edgecolor="black", linewidth=0.4)
             ax.axhline(0, color="gray", linewidth=0.6)
-            ax.set_xticks(range(3), MODELS[1:])
+            ax.set_xticks(range(len(cand_models)), cand_models)
             ax.tick_params(axis="x", labelbottom=True)
             ax.set_title(f"{det_label}: {metric_label}")
             ax.margins(y=0.25)
@@ -259,7 +303,8 @@ def write_tables(means: dict, bd_rates: dict, report: dict, output_dir: Path):
                      r"\label{tab:m1-m4-coco}", r"\begin{tabular}{llrrrrr}", r"\toprule",
                      r"Model & CRF & Bitstream bytes & mAP@[.50:.95] & AP50 & AP$_{\rm small}$ & BD reduction (\%) \\",
                      r"\midrule"]
-    for i, model in enumerate(MODELS):
+    active_models = tuple(means["yolo11l"].keys())
+    for i, model in enumerate(active_models):
         if i:
             lines.append(r"\midrule")
         for crf in CRFS:
@@ -269,7 +314,7 @@ def write_tables(means: dict, bd_rates: dict, report: dict, output_dir: Path):
                 bd = "0.00 / 0.00" if model == "M1" else " / ".join(
                     latex_number(bd_rates["yolo11l"][model][f"{method}_bd_rate_map"], reduction=True)
                     for method in METHODS)
-            cells = [r"\textbf{M4}" if model == "M4" else model, str(crf), f"{p['bytes']:,.0f}"]
+            cells = [r"\textbf{" + model + r"}" if ("4" in model or "prefilter" in model) else model, str(crf), f"{p['bytes']:,.0f}"]
             cells += [latex_number(p[m], percent=True) for m in ("ap_50_95", "ap50", "ap_small")]
             lines.append(" & ".join(cells + [bd]) + r" \\")
     lines += [r"\bottomrule", r"\end{tabular}", r"\end{table*}"]
@@ -285,8 +330,8 @@ def write_tables(means: dict, bd_rates: dict, report: dict, output_dir: Path):
     for i, (det, name) in enumerate(zip(DETECTORS, ("YOLOv11-L", "Faster R-CNN"))):
         if i:
             lines.append(r"\midrule")
-        for model in MODELS:
-            cells = [name, r"\textbf{M4}" if model == "M4" else model]
+        for model in active_models:
+            cells = [name, r"\textbf{" + model + r"}" if ("4" in model or "prefilter" in model) else model]
             cells += [latex_number(mean_or_none(means[det][model][c][m] for c in CRFS), percent=True)
                       for m in ("ap_50_95", "ap50", "ap_small")]
             cells += ["0.00" if model == "M1" else latex_number(bd_rates[det][model][f"{method}_bd_rate_map"])
