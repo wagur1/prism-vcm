@@ -48,6 +48,7 @@ def discover_pool_accounts(pool_dir: Path) -> list[dict]:
 
 
 OVERRIDE_SHARD_ACCOUNTS = {
+    6: "hoangminhhuy123",      # Tested & Verified GPU quota available (replaces htran123456)
     11: "huolgggnuyen",        # 29.99h GPU quota remaining
     15: "nguyenhoanglan1232",  # 27.81h GPU quota remaining
 }
