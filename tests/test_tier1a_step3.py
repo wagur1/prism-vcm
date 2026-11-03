@@ -99,6 +99,22 @@ def test_masked_qg_huber_loss_ignores_unseen_outside_crop():
     assert float(loss.item()) == pytest.approx(0.0, abs=1e-6)
 
 
+def test_fusion_label_can_win_spatial_supervision():
+    shape = (4, 4)
+    sam = np.eye(4, dtype=bool)
+    maps = generate_candidates(64, 64, sam, sam.astype(float),
+                               sample_id="joint", include_fusion=True)
+    row = {"sample_id": "joint", "candidate_count": 9,
+           "candidates_sha256": candidates_hash(maps), "winner_map_index": 8,
+           "candidates": [{"index": i, "status": "PASS", "decode_ok": True,
+                           "bits": 1000, "J": .9 if i == 8 else .5} for i in range(9)]}
+    target = build_spatial_oracle_target(maps, np.ones(shape, bool), row, width=64, height=64)
+    assert target["winner_index"] == 8
+    assert target["winner_name"] == "sam_dino_fusion_minus4_plus6"
+    assert np.all(target["target_qg"][sam] < 0)
+    assert abs(float(target["target_qg"].mean())) < 1e-5
+
+
 def test_student_training_and_calibration_fail_closed(tmp_path):
     # 1. Verify Student seed training decreases masked QG Huber loss
     known = np.zeros((68, 120), dtype=bool)

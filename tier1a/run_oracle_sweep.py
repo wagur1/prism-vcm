@@ -10,6 +10,10 @@ projection exceeds six hours, later frames use candidates 0..5 (K=6); pilot K=8
 labels are retained. K=6 is a recorded exception to CONFIG C's K>=8, never hidden.
 The 10-frame planning estimate does not satisfy CONFIG F's 200-image measurement;
 an updated 200-image estimate is recorded when available. No raw YUV disk writes.
+
+Enhancement (2026-11-03): --include-fusion uses versioned K=9 throughout, with
+the ninth SAM/DINO joint proposal retained even when time estimates are tight.
+The same deadline checks stop unfinished work; legacy K=8/K=6 stays the default.
 """
 from __future__ import annotations
 
@@ -33,7 +37,7 @@ from prism.data.splits import SplitLedger
 from prism.training.manifest import EncodeManifest
 from prism.training.oracle_sweep import rank_task_candidates, validate_candidate_maps
 from tier1a.common import check_storage, exclusive, read_json, sha256, write_json
-from tier1a.oracle_candidates import NAMES, RECIPE, cached_candidates, candidates_hash
+from tier1a.oracle_candidates import NAMES, RECIPE, cached_candidates, candidates_hash, candidate_recipe
 
 REPO = Path(__file__).resolve().parents[1]
 COUNCIL = [
@@ -73,7 +77,7 @@ class FrameSweep:
             "schema_version": 1, "ledger_sha256": ledger.digest, "contract": contract,
             "contract_sha256": self.contract_sha, "lambda_R": lambda_rate,
             "objective": "maximize D + lambda_R * R0/R (whole-bitstream bits)",
-            "labels": {}, "history": [], "effective_k": 8, "council_visibility": COUNCIL}
+            "labels": {}, "history": [], "effective_k": contract.get("candidate_count", 8), "council_visibility": COUNCIL}
         if (self.data["ledger_sha256"] != ledger.digest
                 or self.data["contract_sha256"] != self.contract_sha):
             raise ValueError("Resume contract changed; use a separate output directory")
@@ -90,8 +94,8 @@ class FrameSweep:
         if entry.source != "train2017" or frame["source_sha256"] != entry.sha256:
             raise ValueError("Require source-bound train2017 frames")
         validate_candidate_maps(maps, distinct=False)
-        if len(maps) not in (6, 8) or np.any(maps[0]):
-            raise ValueError("Require K=8 (or recorded K=6 scope) with zero-map candidate 0")
+        if len(maps) not in (6, 8, 9) or np.any(maps[0]):
+            raise ValueError("Require K=8, fusion K=9 (or recorded K=6 scope) with zero-map candidate 0")
         candidate_sha = candidates_hash(maps)
         input_sha = hashlib.sha256(payload).hexdigest()
         binding = digest_json({"candidates": candidate_sha, "input": input_sha,
@@ -263,7 +267,8 @@ def load_inputs(root: Path, ledger_path: Path, annotations: Path, expected_sha: 
     return ledger, sorted(rows, key=lambda r: r["image_id"]), sha256(selection_path)
 
 
-def load_frame(root: Path, row: dict, ledger: SplitLedger, selection_sha: str) -> tuple[dict, bytes, np.ndarray]:
+def load_frame(root: Path, row: dict, ledger: SplitLedger, selection_sha: str, *,
+               include_fusion: bool = False) -> tuple[dict, bytes, np.ndarray]:
     from tier1a.yuv import load_yuv
     path = root / "coco500/yuv" / f"{row['image_id']}.yuv.gz"
     meta = read_json(path.with_name(path.name + ".json"))
@@ -286,7 +291,8 @@ def load_frame(root: Path, row: dict, ledger: SplitLedger, selection_sha: str) -
     if hashlib.sha256(payload).hexdigest() != geometry["raw_sha256"]:
         raise ValueError("Raw input SHA mismatch")
     maps, provenance = cached_candidates(root / "teachers", row["sample_id"], geometry,
-        source_sha=row["source_sha256"], ledger_sha=ledger.digest, selection_sha=selection_sha)
+        source_sha=row["source_sha256"], ledger_sha=ledger.digest, selection_sha=selection_sha,
+        include_fusion=include_fusion)
     return dict(row, geometry=geometry, candidate_provenance=provenance), payload, maps
 
 
@@ -381,7 +387,7 @@ def report_for(sweep: FrameSweep, started: float, cpu_started: float, prior_gpu_
             "whole_bitstream_bits": sum(c.get("bits") or 0 for c in candidates),
             "frame_bits": sum(c.get("frame_bits") or 0 for c in candidates)},
         "ledger_sha256": sweep.ledger.digest, "effective_k": sweep.data["effective_k"],
-        "k_counts": {str(k): sum(r.get("candidate_count") == k for r in rows) for k in (6, 8)},
+        "k_counts": {str(k): sum(r.get("candidate_count") == k for r in rows) for k in (6, 8, 9)},
         "pilot_projection": sweep.data.get("pilot_projection"),
         "measurement_200": sweep.data.get("measurement_200"),
         "reduction": sweep.data.get("reduction"), "zero_stock_smoke": sweep.data.get("zero_stock_smoke"),
@@ -415,7 +421,8 @@ def run_job(args) -> int:
                 repo_sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True).strip()
             except (OSError, subprocess.CalledProcessError):
                 repo_sha = "UNAVAILABLE"
-            contract = {"recipe": RECIPE, "detector": scorer.provenance, "encoder": asdict(encoder.config),
+            contract = {"recipe": candidate_recipe(9 if args.include_fusion else 8),
+                "detector": scorer.provenance, "encoder": asdict(encoder.config),
                 "stack": stack, "pin": encoder.pin, "stock_pin": encoder.stock_pin,
                 "annotations_sha256": sha256(args.annotations), "seed": 0, "delta_x": "identity/zero",
                 "code_sha256": {str(p.relative_to(REPO)): sha256(p) for p in (
@@ -424,6 +431,8 @@ def run_job(args) -> int:
                     REPO / "prism/codec/x265_bridge.py", REPO / "prism/codec/ffmpeg_stream.py",
                     REPO / "tier1a/yuv.py", REPO / "tier1a/common.py")},
                 "config_sha256": {name: sha256(REPO / "docs" / name) for name in ("CONFIG_V1_3.md", "CONFIG_V1_4.md")}}
+            if args.include_fusion:
+                contract["candidate_count"] = 9
             manifest = EncodeManifest(output / "encode_manifest.jsonl", repo_sha=repo_sha,
                 config_sha=digest_json(contract), build=encoder.pin, seed=0)
             sweep = FrameSweep(output, ledger, manifest, contract, lambda_rate=args.lambda_rate)
@@ -436,10 +445,12 @@ def run_job(args) -> int:
                     if time.monotonic() >= deadline:
                         raise TimeoutError("Deadline before candidate; no encode attempted")
                 try:
-                    frame, payload, maps = load_frame(args.input, row, ledger, selection_sha)
+                    frame, payload, maps = load_frame(args.input, row, ledger, selection_sha,
+                                                     include_fusion=args.include_fusion)
                     # Freeze each frame's original K on resume, including the K=8 pilot.
                     prior = sweep.data["labels"].get(row["sample_id"], {})
-                    k = prior.get("candidate_count", 8 if number < 10 else sweep.data["effective_k"])
+                    k = prior.get("candidate_count", 9 if args.include_fusion else (
+                        8 if number < 10 else sweep.data["effective_k"]))
                     result, skipped = sweep.process(frame, payload, maps[:k], encoder, scorer,
                                                     smoke=number == 0, before_candidate=before_candidate)
                 except Exception as exc:
@@ -459,7 +470,9 @@ def run_job(args) -> int:
                     forecast = projection(pilot_rows)
                     forecast["setup_seconds"] = max(0, time.monotonic() - started - sum(r.get("wall_seconds", 0) for r in pilot_rows))
                     sweep.data["pilot_projection"] = forecast
-                    if choose_scope(forecast, forecast["setup_seconds"], args.wall_hours) == 6:
+                    if args.include_fusion:
+                        forecast["projected_500x9_wall_hours"] = forecast["projected_500x8_wall_hours"] * 9 / 8
+                    if not args.include_fusion and choose_scope(forecast, forecast["setup_seconds"], args.wall_hours) == 6:
                         sweep.data["effective_k"] = 6
                         sweep.data["reduction"] = {"from": 8, "to": 6, "after_frames": 10,
                             "reason": "Measured K8 projection exceeds job allowance", "dropped_indices": [6, 7],
@@ -624,6 +637,7 @@ def main() -> int:
     parser.add_argument("--prior-gpu-hours", type=float, help="Cumulative pilot GPU usage; default inherits Step 1 account")
     parser.add_argument("--gpu-devices", type=int, default=0, help=argparse.SUPPRESS)
     parser.add_argument("--no-build", action="store_true", help="Require provisioned GATE-0 binaries; no build/network")
+    parser.add_argument("--include-fusion", action="store_true", help="Versioned K=9 SAM+DINO recipe; use a fresh output directory")
     parser.add_argument("--codec-dry-run", action="store_true", help="2x3 synthetic codec-only local smoke, no build/network")
     parser.add_argument("--encode-worker", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--run-job", action="store_true", help=argparse.SUPPRESS)

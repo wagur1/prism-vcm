@@ -33,8 +33,34 @@ from tier1a.step3_detectors import evaluate_pooled_coco_metrics
 DEFAULT_RESULTS_DIR = Path("C:/Users/Wagur1/Desktop/HOI_DONG_9/results_tier1b")
 CRF_GRID = (20, 24, 28, 32, 36)
 SEEDS = (0, 1, 2)
-MODELS = ("M1", "M2", "M3", "M4")
+MODELS = ("M1", "M2", "M2_asym", "M2_asym_prefilter", "M3", "M4")
 DETECTORS = ("yolo11l", "faster_rcnn")
+
+
+def merge_shard_data(reports: dict[int, Path], expected_num_shards: int = 19) -> tuple[dict, list[dict], list[int]]:
+    """Aggregate shard reports and return summary, all observations, and sorted unique image IDs."""
+    if set(reports.keys()) != set(range(expected_num_shards)):
+        raise ValueError(f"Expected exactly shards 0..{expected_num_shards - 1}")
+    seen_image_ids = set()
+    all_obs = []
+    image_ids = []
+    for s_idx in sorted(reports.keys()):
+        data = read_json(reports[s_idx])
+        shard_img_ids = data.get("image_ids", [])
+        shard_ids_set = set(shard_img_ids)
+        overlap = seen_image_ids.intersection(shard_ids_set)
+        if overlap:
+            raise ValueError(f"Shard {s_idx} contains overlapping images: {overlap}")
+        seen_image_ids.update(shard_ids_set)
+        image_ids.extend(shard_img_ids)
+        all_obs.extend(data.get("observations", []))
+    image_ids.sort()
+    summary = {
+        "shards_found": len(reports),
+        "total_unique_images": len(seen_image_ids),
+        "total_observations": len(all_obs),
+    }
+    return summary, all_obs, image_ids
 
 
 def find_shard_reports(results_dir: Path) -> dict[int, Path]:
@@ -86,6 +112,53 @@ def download_shard_outputs(pool_dir: Path, results_dir: Path, num_shards: int = 
     return downloaded
 
 
+def compute_rd_and_bd_rates(all_observations: list[dict], coco, image_ids: list[int] | None) -> dict:
+    """Group observations, evaluate pooled COCO metrics, and compute BD-rates."""
+    grouped = defaultdict(list)
+    for obs in all_observations:
+        model = obs["model"]
+        seed = obs.get("seed")
+        crf = int(obs["crf"])
+        grouped[(model, seed, crf)].append(obs)
+
+    curves = defaultdict(list)
+    detailed_metrics = defaultdict(dict)
+    available_seeds = sorted({obs["seed"] for obs in all_observations if obs.get("seed") is not None})
+    if not available_seeds:
+        available_seeds = [0]
+
+    for det in DETECTORS:
+        for crf in CRF_GRID:
+            obs_list = grouped.get(("M1", None, crf), [])
+            if not obs_list:
+                continue
+            total_bytes = sum(o["whole_bitstream_bytes"] for o in obs_list)
+            all_rows = [r for o in obs_list for r in o.get(det, {}).get("rows", [])]
+            m = evaluate_pooled_coco_metrics(coco, image_ids, all_rows)
+            curves[(det, "M1", None)].append({
+                "crf": crf, "bytes": total_bytes, "ap_50_95": m["ap_50_95"], "ap50": m["ap50"], "ap_small": m.get("ap_small", 0.0)
+            })
+            detailed_metrics[det][f"M1_crf{crf}"] = {**m, "bytes": total_bytes}
+
+        cand_models = sorted({m for (m, s, c) in grouped.keys() if m != "M1"})
+        for model in cand_models:
+            for seed in available_seeds:
+                for crf in CRF_GRID:
+                    obs_list = grouped.get((model, seed, crf), [])
+                    if not obs_list:
+                        continue
+                    total_bytes = sum(o["whole_bitstream_bytes"] for o in obs_list)
+                    all_rows = [r for o in obs_list for r in o.get(det, {}).get("rows", [])]
+                    m = evaluate_pooled_coco_metrics(coco, image_ids, all_rows)
+                    curves[(det, model, seed)].append({
+                        "crf": crf, "bytes": total_bytes, "ap_50_95": m["ap_50_95"], "ap50": m["ap50"], "ap_small": m.get("ap_small", 0.0)
+                    })
+                    detailed_metrics[det][f"{model}_s{seed}_crf{crf}"] = {**m, "bytes": total_bytes}
+
+    bd_results = compute_bd_rates(curves, available_seeds)
+    return {"metrics": detailed_metrics, "bd_rates": bd_results}
+
+
 def compute_bd_rates(curves: dict, available_seeds: list[int]) -> dict:
     """Calculate BD-Rates (MPEG Bjontegaard and PAVA-PCHIP) against M1 baseline."""
     results_bd = {}
@@ -94,7 +167,8 @@ def compute_bd_rates(curves: dict, available_seeds: list[int]) -> dict:
         m1_pts = curves.get((det, "M1", None), [])
         if len(m1_pts) < 4:
             continue
-        for cand_model in ("M2", "M3", "M4"):
+        cand_models = [m for m in MODELS if m != "M1" and any((det, m, s) in curves for s in available_seeds)]
+        for cand_model in cand_models:
             results_bd[det][cand_model] = {}
             seed_bd_map_bjontegaard = []
             seed_bd_map_pava = []

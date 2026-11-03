@@ -17,6 +17,10 @@ Implements the unanimous 6/6 Council Ruling from Escalation #12 (2026-11-02):
         bit-identity smoke suite, deduplicate identical physical encodes by
         content hash, and score each decoded frame once on both YOLOv11-L and
         Faster R-CNN ResNet50-FPN v2.
+
+2026-11-03 enhancement: optional adaptive QP inference and versioned K=9 joint
+SAM/DINO labels. The historical ruling and default zero-mean path above remain
+the baseline; adaptive/pre-filter ablations run in scripts/screen_m2_enhancements.py.
 """
 from __future__ import annotations
 
@@ -40,6 +44,8 @@ from torch import Tensor
 from torch.nn import functional as F
 
 from prism.codec.x265_bridge import qg_shape
+# Re-export legacy helpers here for existing Step 3/Tier 1b consumers.
+from prism.codec.qp_maps import project_adaptive_qp_map, project_zero_mean_qp_map, qg_area_weights
 from prism.data.splits import SplitLedger
 from prism.evaluation.bootstrap import paired_bd_bootstrap
 from prism.evaluation.evaluator import evaluate, h1_pass, secondary_h2, transfer_status
@@ -59,57 +65,7 @@ REPO = Path(__file__).resolve().parents[1]
 CRF_GRID = (20, 24, 28, 32, 36)
 SEEDS = (0, 1, 2)
 SPATIAL_CANDIDATE_INDICES = (0, 3, 4)
-
-
-def qg_area_weights(width: int = 1920, height: int = 1080) -> np.ndarray:
-    """Return per-QG valid pixel weights on the CTU64-padded QG16 grid (68x120 for 1080p)."""
-    rows, cols = qg_shape(width, height)
-    y0 = np.arange(rows, dtype=np.float64) * 16.0
-    y1 = np.minimum(y0 + 16.0, float(height))
-    row_w = np.clip((y1 - y0) / 16.0, 0.0, 1.0)
-    x0 = np.arange(cols, dtype=np.float64) * 16.0
-    x1 = np.minimum(x0 + 16.0, float(width))
-    col_w = np.clip((x1 - x0) / 16.0, 0.0, 1.0)
-    return (row_w[:, None] * col_w[None, :]).astype(np.float32)
-
-
-def project_zero_mean_qp_map(
-    raw_qg_map: np.ndarray,
-    *,
-    mask: np.ndarray | None = None,
-    weights: np.ndarray | None = None,
-    low: float = -6.0,
-    high: float = 6.0,
-    quantize_int8: bool = True,
-) -> np.ndarray:
-    """Constrained zero-mean projection under box bounds [low, high].
-
-    Solves for shift lambda via bisection such that:
-        sum_{g in mask} w_g * clip(q_g - lambda, low, high) == 0
-    outside mask is set to 0.
-    """
-    q = np.asarray(raw_qg_map, dtype=np.float64)
-    active = np.ones(q.shape, dtype=bool) if mask is None else np.asarray(mask, dtype=bool)
-    w = np.ones(q.shape, dtype=np.float64) if weights is None else np.asarray(weights, dtype=np.float64)
-    w_active = np.where(active, w, 0.0)
-    total_w = float(w_active.sum())
-    if total_w <= 0.0 or not np.any(active):
-        return np.zeros(q.shape, dtype=np.int8 if quantize_int8 else np.float32)
-
-    lo_shift, hi_shift = float(q[active].min() - high), float(q[active].max() - low)
-    for _ in range(36):
-        mid = 0.5 * (lo_shift + hi_shift)
-        clipped = np.clip(q - mid, low, high)
-        weighted_sum = float((w_active * clipped).sum())
-        if weighted_sum > 0.0:
-            lo_shift = mid
-        else:
-            hi_shift = mid
-    lam = 0.5 * (lo_shift + hi_shift)
-    projected = np.where(active, np.clip(q - lam, low, high), 0.0)
-    if not quantize_int8:
-        return projected.astype(np.float32)
-    return np.rint(projected).clip(low, high).astype(np.int8)
+FUSION_SPATIAL_CANDIDATE_INDICES = (*SPATIAL_CANDIDATE_INDICES, 8)
 
 
 def select_spatial_winner(candidates: list[dict], allowed_indices: tuple[int, ...] = SPATIAL_CANDIDATE_INDICES) -> int:
@@ -149,11 +105,14 @@ def build_spatial_oracle_target(
     height: int = 1080,
 ) -> dict:
     """Construct zero-mean spatial target on the known teacher crop for L_align."""
-    k = int(label_row.get("candidate_count", len(label_row.get("candidates", len(maps)))))
+    k = int(label_row.get("candidate_count", len(label_row.get("candidates", maps))))
+    if k not in (6, 8, 9) or k > len(maps):
+        raise ValueError("Oracle label count must match an available K=6/K=8/K=9 recipe")
     active_maps = maps[:k]
     if candidates_hash(active_maps) != label_row["candidates_sha256"]:
         raise ValueError(f"Candidate maps hash mismatch for sample {label_row['sample_id']}")
-    winner_idx = select_spatial_winner(label_row["candidates"], SPATIAL_CANDIDATE_INDICES)
+    allowed = FUSION_SPATIAL_CANDIDATE_INDICES if k == 9 else SPATIAL_CANDIDATE_INDICES
+    winner_idx = select_spatial_winner(label_row["candidates"], allowed)
     raw_winner_map = np.asarray(active_maps[winner_idx], dtype=np.float32)
     weights = qg_area_weights(width, height)
     centered_target = project_zero_mean_qp_map(
@@ -209,8 +168,15 @@ def infer_student_qp_map(
     device: str,
     width: int = 1920,
     height: int = 1080,
+    projection: str = "zero_mean",
+    low: float = -4.0,
+    high: float = 6.0,
+    delta_rate_offset: float | None = None,
+    quantize_int8: bool | None = None,
 ) -> np.ndarray:
-    """Run Student inference at given CRF and project to constrained zero-mean int8 QG map."""
+    """Run Student inference; legacy int8 or opt-in adaptive float32 projection."""
+    if projection not in {"zero_mean", "adaptive"}:
+        raise ValueError("projection must be 'zero_mean' or 'adaptive'")
     model.eval()
     with torch.no_grad():
         inp = x_low.unsqueeze(0).to(device)
@@ -218,7 +184,12 @@ def infer_student_qp_map(
         out = model(inp, qp_scalar, for_encoding=False)
         pred_qg = upsample_qp_map(out["delta_qp"], width=width, height=height)[0, 0].detach().cpu().numpy()
     weights = qg_area_weights(width, height)
-    return project_zero_mean_qp_map(pred_qg, weights=weights, low=-6.0, high=6.0, quantize_int8=True)
+    if projection == "adaptive":
+        return project_adaptive_qp_map(pred_qg, crf=crf, weights=weights, low=low, high=high,
+            delta_rate_offset=delta_rate_offset,
+            quantize_int8=False if quantize_int8 is None else quantize_int8)
+    return project_zero_mean_qp_map(pred_qg, weights=weights, low=-6.0, high=6.0,
+                                    quantize_int8=True if quantize_int8 is None else quantize_int8)
 
 
 def infer_student_residual(
@@ -646,10 +617,11 @@ def main() -> int:
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
         train_samples, dev_samples = [], []
-        winner_counts = {idx: 0 for idx in SPATIAL_CANDIDATE_INDICES}
+        winner_counts = {idx: 0 for idx in FUSION_SPATIAL_CANDIDATE_INDICES}
         for sid in train_ids:
             step3_ledger.require(sid, "train")
-            frame, payload, maps = load_frame(args.input, row_by_sid[sid], parent_ledger, selection_sha)
+            frame, payload, maps = load_frame(args.input, row_by_sid[sid], parent_ledger, selection_sha,
+                include_fusion=oracle_labels["labels"][sid].get("candidate_count", 8) == 9)
             known_mask = extract_known_mask(args.input / "teachers", sid, frame["geometry"])
             target_info = build_spatial_oracle_target(maps, known_mask, oracle_labels["labels"][sid])
             winner_counts[target_info["winner_index"]] += 1
@@ -665,7 +637,8 @@ def main() -> int:
 
         for sid in dev_ids:
             step3_ledger.require(sid, "dev")
-            frame, payload, maps = load_frame(args.input, row_by_sid[sid], parent_ledger, selection_sha)
+            frame, payload, maps = load_frame(args.input, row_by_sid[sid], parent_ledger, selection_sha,
+                include_fusion=oracle_labels["labels"][sid].get("candidate_count", 8) == 9)
             known_mask = extract_known_mask(args.input / "teachers", sid, frame["geometry"])
             target_info = build_spatial_oracle_target(maps, known_mask, oracle_labels["labels"][sid])
             rgb = yuv_to_rgb(payload, frame["geometry"]["width"], frame["geometry"]["height"])

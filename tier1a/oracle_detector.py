@@ -79,9 +79,8 @@ class CocoAP50:
                            "versions": {name: importlib.metadata.version(name)
                                         for name in ("torch", "ultralytics", "pycocotools", "numpy", "Pillow")}}
 
-    def __call__(self, rgb: np.ndarray, frame: dict) -> float:
-        from pycocotools.coco import COCO
-        from pycocotools.cocoeval import COCOeval
+    def predict_rows(self, rgb: np.ndarray, frame: dict) -> list[dict]:
+        """COCO rows for pooled screening mAP, without per-image averaging."""
         image_id, geometry = frame["image_id"], frame["geometry"]
         if image_id not in self.image_ids:
             raise ValueError("Scoring outside the frozen training selection")
@@ -98,6 +97,13 @@ class CocoAP50:
             if bbox[2] and bbox[3]:
                 rows.append({"image_id": image_id, "category_id": COCO_IDS[int(cls)],
                              "bbox": bbox, "score": float(score)})
+        return rows
+
+    def __call__(self, rgb: np.ndarray, frame: dict) -> float:
+        from pycocotools.coco import COCO
+        from pycocotools.cocoeval import COCOeval
+        image_id = frame["image_id"]
+        rows = self.predict_rows(rgb, frame)
         with redirect_stdout(io.StringIO()):
             if rows:
                 detections = self.coco.loadRes(rows)

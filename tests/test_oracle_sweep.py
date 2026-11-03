@@ -87,6 +87,20 @@ class OracleTests(unittest.TestCase):
         self.assertEqual(full.shape, (8, 68, 120))
         self.assertLessEqual(np.abs(full).max(), 6)
 
+    def test_fusion_k9_is_encoded_named_and_ranked(self):
+        maps = generate_candidates(64, 64, self.sam, self.saliency,
+                                   sample_id="1", include_fusion=True)
+        encoder = StubEncoder()
+        row, skipped = self.sweep.process(self.frame, self.payload, maps, encoder,
+                                          lambda rgb, frame: .5, smoke=True)
+        self.assertFalse(skipped)
+        self.assertEqual(row["status"], "PASS")
+        self.assertEqual(row["candidate_count"], 9)
+        self.assertEqual(row["candidates"][8]["name"], "sam_dino_fusion_minus4_plus6")
+        self.assertTrue(row["candidates"][8]["decode_ok"])
+        self.assertIsNotNone(row["candidates"][8]["J"])
+        self.assertEqual(len(encoder.calls), 10)  # nine proposals plus stock identity
+
     def test_unknown_crop_offsets_zero(self):
         known = np.zeros((4, 4), dtype=bool)
         known[1:3, 1:3] = True

@@ -24,7 +24,7 @@ from tier1a.common import exclusive, read_json, sha256, write_json
 
 CRFS = (20, 24, 28, 32, 36)
 SEEDS = (0, 1, 2)
-MODELS = ("M1", "M2", "M3", "M4")
+MODELS = ("M1", "M2", "M2_asym", "M2_asym_prefilter", "M3", "M4")
 DETECTORS = ("yolo11l", "faster_rcnn")
 SCHEMA_VERSION = 1
 
@@ -45,14 +45,20 @@ def validate_crfs(crfs: list[int] | tuple[int, ...]) -> list[int]:
     return sorted(crfs)
 
 
-def observation_keys(image_ids, crfs):
+def observation_keys(image_ids, crfs, models=None):
+    use_models = models if models is not None else MODELS
     return {(int(i), model, seed, int(crf)) for i in image_ids for crf in crfs
-            for model in MODELS for seed in ([None] if model == "M1" else SEEDS)}
+            for model in use_models for seed in ([None] if model == "M1" else SEEDS)}
 
 
-def validate_observations(observations: list[dict], image_ids, crfs, category_ids) -> None:
+def validate_observations(observations: list[dict], image_ids, crfs, category_ids, models=None) -> None:
     """Reject missing/duplicate cells and malformed detections before pooling."""
-    expected = observation_keys(image_ids, crfs)
+    if models is None:
+        obs_models = tuple(sorted({r["model"] for r in observations}))
+        use_models = obs_models if obs_models else MODELS
+    else:
+        use_models = models
+    expected = observation_keys(image_ids, crfs, models=use_models)
     seen = set()
     for row in observations:
         key = (row["image_id"], row["model"], row["seed"], row["crf"])
@@ -104,27 +110,37 @@ def load_students(checkpoints_dir: Path, device: str):
 
 
 def infer_controls(model, x_low, crf: int, device: str):
-    """Produce both controls in one forward pass, matching Step 3 inference."""
+    """Produce raw QP map in one forward pass."""
     import torch
-    from torch.nn import functional as F
     from prism.models.student import upsample_qp_map
-    from tier1a.run_tier1a_step3 import project_zero_mean_qp_map, qg_area_weights
 
     with torch.inference_mode():
         out = model(x_low.unsqueeze(0).to(device),
                     torch.full((1, 1), crf / 51.0, device=device), for_encoding=False)
-        qg = upsample_qp_map(out["delta_qp"])[0, 0].cpu().numpy()
-        residual = F.interpolate(out["residual"], size=(1080, 1920), mode="bilinear",
-                                 align_corners=False)[0, 0].cpu().numpy()
-    return project_zero_mean_qp_map(qg, weights=qg_area_weights()), residual
+        raw_qg = upsample_qp_map(out["delta_qp"])[0, 0].cpu().numpy()
+    return raw_qg
+
+
+def smooth_yuv(payload: bytes, qmap: np.ndarray, width: int, height: int, strength: float = 1.0) -> bytes:
+    from prism.codec.ffmpeg_stream import frame_bytes
+    from prism.preprocessing.background_filter import apply_background_smoothing
+    if len(payload) != frame_bytes(width, height):
+        raise ValueError("Expected one YUV420p8 frame")
+    raw, n = np.frombuffer(payload, np.uint8), width * height
+    planes = (raw[:n].reshape(height, width),
+              raw[n:n * 5 // 4].reshape(height // 2, width // 2),
+              raw[n * 5 // 4:].reshape(height // 2, width // 2))
+    return b"".join(p.tobytes() for p in apply_background_smoothing(planes, qmap, strength))
 
 
 def evaluate_image(frame, payload, models, encoder, scorer, crfs, directory, device):
     from tier1a.oracle_codec import yuv_to_rgb
-    from tier1a.run_tier1a_step3 import apply_residual_to_yuv, rgb_to_student_input
+    from tier1a.run_tier1a_step3 import rgb_to_student_input
+    from prism.codec.qp_maps import project_adaptive_qp_map, project_zero_mean_qp_map, qg_area_weights
 
     x_low = rgb_to_student_input(yuv_to_rgb(payload, 1920, 1080))
     observations, encoded_cache, scored_cache = [], {}, {}
+    weights = qg_area_weights(1920, 1080)
 
     def observe(model, seed, crf, source, offsets, stock):
         input_sha = hashlib.sha256(source).hexdigest()
@@ -148,11 +164,21 @@ def evaluate_image(frame, payload, models, encoder, scorer, crfs, directory, dev
     for crf in crfs:
         observe("M1", None, crf, payload, None, True)
         for seed in SEEDS:
-            qmap, residual = infer_controls(models[seed], x_low, crf, device)
-            preprocessed = apply_residual_to_yuv(payload, residual, 1920, 1080)
-            observe("M2", seed, crf, payload, qmap, False)
-            observe("M3", seed, crf, preprocessed, None, True)
-            observe("M4", seed, crf, preprocessed, qmap, False)
+            raw_qg = infer_controls(models[seed], x_low, crf, device)
+
+            # M2 (Baseline zero-mean [-6, 6])
+            qmap_base = project_zero_mean_qp_map(raw_qg, weights=weights)
+            observe("M2", seed, crf, payload, qmap_base, False)
+
+            # M2_asym (Asymmetric [-4, 6] + Adaptive DC offset)
+            qmap_asym = project_adaptive_qp_map(raw_qg, crf=crf, weights=weights, high=6.0)
+            observe("M2_asym", seed, crf, payload, qmap_asym, False)
+
+            # M2_asym_prefilter (Asymmetric QP + Background Pre-filtering)
+            spatial = project_zero_mean_qp_map(raw_qg, weights=weights, quantize_int8=False)
+            filter_map = np.where(spatial > 0, qmap_asym, 0)
+            filtered_payload = smooth_yuv(payload, filter_map, 1920, 1080, strength=1.0)
+            observe("M2_asym_prefilter", seed, crf, filtered_payload, qmap_asym, False)
     return {"image_id": frame["image_id"], "geometry": frame["geometry"],
             "observations": observations, "physical_encodes": len(encoded_cache),
             "scored_frames": len(scored_cache)}

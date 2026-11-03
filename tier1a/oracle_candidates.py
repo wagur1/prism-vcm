@@ -20,7 +20,7 @@ from tier1a.common import read_json, sha256
 
 NAMES = ("zero", "uniform_plus3", "uniform_minus3", "sam_minus3_plus2",
          "dino_cosine_top25_minus3_plus2", "checkerboard_plusminus3",
-         "seeded_saliency", "sam_minus4_plus1")
+         "seeded_saliency", "sam_minus4_plus1", "sam_dino_fusion_minus4_plus6")
 RECIPE = {"version": 1, "seed": 0, "qg": 16, "bounds": [-6, 6],
           "sampling": "inverse-letterbox cell centers; nearest crop sampling",
           "unknown_teacher_region": "zero offset",
@@ -29,10 +29,21 @@ RECIPE = {"version": 1, "seed": 0, "qg": 16, "bounds": [-6, 6],
           "random": "PCG64(seed + stable sample hash); P(-3)=normalized saliency; else +3",
           "h": "foreground -4, background +1"}
 
+# The first eight maps and v1 recipe remain byte-identical for existing labels.
+# Opt in to K=9; never silently reinterpret a source-bound K=6/K=8 checksum.
+FUSION_RECIPE = {**RECIPE, "version": 2,
+                 "fusion": "SAM AND observed DINO top25: -4; other SAM: 0; observed non-SAM: +6"}
+
+
+def candidate_recipe(count: int) -> dict:
+    if count not in (6, 8, 9):
+        raise ValueError("Expected legacy K=6/K=8 or fusion K=9")
+    return FUSION_RECIPE if count == 9 else RECIPE
+
 
 def candidates_hash(maps: np.ndarray) -> str:
     validate_candidate_maps(maps, distinct=False)
-    digest = hashlib.sha256(json.dumps(RECIPE, sort_keys=True).encode())
+    digest = hashlib.sha256(json.dumps(candidate_recipe(len(maps)), sort_keys=True).encode())
     digest.update(str(maps.shape).encode())
     digest.update(np.asarray(maps, dtype=np.int8).tobytes(order="C"))
     return digest.hexdigest()
@@ -40,7 +51,8 @@ def candidates_hash(maps: np.ndarray) -> str:
 
 def generate_candidates(width: int, height: int, sam_foreground: np.ndarray,
                         dino_saliency: np.ndarray, *, sample_id: str,
-                        seed: int = 0, observed: np.ndarray | None = None) -> np.ndarray:
+                        seed: int = 0, observed: np.ndarray | None = None,
+                        include_fusion: bool = False) -> np.ndarray:
     shape = qg_shape(width, height)
     sam = np.asarray(sam_foreground, dtype=bool)
     saliency = np.asarray(dino_saliency, dtype=np.float64)
@@ -68,6 +80,9 @@ def generate_candidates(width: int, height: int, sam_foreground: np.ndarray,
         np.where(known, np.where(rng.random(shape) < probability, -3, 3), 0),
         np.where(known, np.where(sam, -4, 1), 0),
     ]).astype(np.int8)
+    if include_fusion:
+        fusion = np.where(known, np.where(sam, np.where(top, -4, 0), 6), 0).astype(np.int8)
+        maps = np.concatenate((maps, fusion[None]), axis=0)
     validate_candidate_maps(maps, distinct=False)
     return maps
 
@@ -94,7 +109,8 @@ def project_crop(values: np.ndarray, crop: np.ndarray, geometry: dict) -> tuple[
 
 
 def cached_candidates(root: Path, sample_id: str, geometry: dict, *,
-                      source_sha: str, ledger_sha: str, selection_sha: str) -> tuple[np.ndarray, dict]:
+                      source_sha: str, ledger_sha: str, selection_sha: str,
+                      include_fusion: bool = False) -> tuple[np.ndarray, dict]:
     shards, hashes = {}, {}
     for teacher in ("sam21", "dinov2"):
         path = root / teacher / f"{sample_id}.npz"
@@ -121,7 +137,8 @@ def cached_candidates(root: Path, sample_id: str, geometry: dict, *,
         raise ValueError("Invalid DINO token norms")
     saliency, _ = project_crop(((patches @ cls) / norm).reshape(37, 37), dino["crop_box"], geometry)
     maps = generate_candidates(geometry["width"], geometry["height"], foreground,
-                               saliency, sample_id=sample_id, observed=known)
-    return maps, {"teacher_sha256": hashes, "recipe": RECIPE,
+                               saliency, sample_id=sample_id, observed=known,
+                               include_fusion=include_fusion)
+    return maps, {"teacher_sha256": hashes, "recipe": candidate_recipe(len(maps)),
                   "observed_qgs": int(known.sum()), "total_qgs": int(known.size),
                   "unique_maps": len({m.tobytes() for m in maps})}

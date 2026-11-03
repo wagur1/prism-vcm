@@ -90,7 +90,7 @@ def test_validate_observations_success_and_failure():
             "faster_rcnn": {"ap50": 0.80, "rows": []},
         },
     ]
-    for m in ("M2", "M3", "M4"):
+    for m in ("M2", "M2_asym", "M2_asym_prefilter"):
         for seed in (0, 1, 2):
             valid_obs.append({
                 "image_id": 100, "model": m, "seed": seed, "crf": 20,
