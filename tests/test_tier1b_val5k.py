@@ -173,3 +173,24 @@ def test_merge_shard_data(tmp_path: Path):
     shard1.write_text(json.dumps(shard1_data_dup), encoding="utf-8")
     with pytest.raises(ValueError, match="overlapping images"):
         merge_shard_data(reports, expected_num_shards=2)
+
+
+def test_smooth_yuv_and_prefilter_integration():
+    """Verify smooth_yuv functions without NameError or shape mismatch."""
+    import numpy as np
+    from tier1b.run_tier1b_val5k import smooth_yuv
+    from prism.codec.ffmpeg_stream import frame_bytes
+    from prism.codec.qp_maps import project_adaptive_qp_map, project_zero_mean_qp_map, qg_area_weights
+
+    width, height = 1920, 1080
+    weights = qg_area_weights(width, height)
+    raw_qg = np.random.randn(68, 120).astype(np.float32)
+
+    qmap_asym = project_adaptive_qp_map(raw_qg, crf=28, weights=weights, high=6.0)
+    spatial = project_zero_mean_qp_map(raw_qg, weights=weights, quantize_int8=False)
+    filter_map = np.where(spatial > 0, qmap_asym, 0)
+
+    payload = b"\x80" * frame_bytes(width, height)
+    filtered = smooth_yuv(payload, filter_map, width, height, strength=1.0)
+    assert len(filtered) == len(payload)
+

@@ -353,7 +353,8 @@ def stream_shards_and_evaluate(
                 chunk_file = scratch_path / f"{det}_M1_None_{crf}.pkl"
                 tasks.append((det, "M1", None, crf, b, str(chunk_file), str(annotations_path), all_image_ids))
 
-            for model in ("M2", "M3", "M4"):
+            cand_models = [m for m in MODELS if m != "M1" and any((m, s, c) in total_bytes for s in seeds_list for c in CRF_GRID)]
+            for model in cand_models:
                 for seed in seeds_list:
                     for crf in CRF_GRID:
                         key = (model, seed, crf)
@@ -411,7 +412,7 @@ def print_summary_table(results: dict, summary: dict):
         print(f"{'':<25} | {'mAP (50-95)':<12} {'AP50':<11} | {'mAP (50-95)':<12} {'AP50':<11}")
         print("-" * 80)
         bd = results.get("bd_rates", {}).get(det, {})
-        for cand in ("M2", "M3", "M4"):
+        for cand in [m for m in MODELS if m != "M1" and m in bd]:
             m = bd.get(cand, {}).get("mean", {})
             bj_map = f"{m.get('bjontegaard_bd_rate_map'):.2f}%" if m.get('bjontegaard_bd_rate_map') is not None else "N/A"
             bj_50 = f"{m.get('bjontegaard_bd_rate_ap50'):.2f}%" if m.get('bjontegaard_bd_rate_ap50') is not None else "N/A"
