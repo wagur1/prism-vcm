@@ -9,11 +9,15 @@ from __future__ import annotations
 
 import argparse
 from collections import defaultdict
+import concurrent.futures
+import gc
 import json
 import os
 from pathlib import Path
+import pickle
 import subprocess
 import sys
+import tempfile
 import time
 import warnings
 
@@ -82,114 +86,16 @@ def download_shard_outputs(pool_dir: Path, results_dir: Path, num_shards: int = 
     return downloaded
 
 
-def merge_shard_data(shard_reports: dict[int, Path], expected_num_shards: int = 19) -> tuple[dict, list[dict], list[int]]:
-    """Verify disjoint union of images and merge observation rows."""
-    if set(shard_reports) != set(range(expected_num_shards)):
-        raise ValueError(f"Expected exactly shards 0..{expected_num_shards - 1}")
-    all_observations = []
-    seen_image_ids = set()
-    total_images_in_shards = 0
-    metadata_list = []
-
-    for s_idx, path in sorted(shard_reports.items()):
-        data = read_json(path)
-        if data.get("shard_idx", s_idx) != s_idx:
-            raise ValueError(f"Shard index mismatch in {path}")
-        metadata_list.append({
-            "shard_idx": data.get("shard_idx", s_idx),
-            "image_count": len(data.get("image_ids", [])),
-            "observation_count": len(data.get("observations", [])),
-            "path": str(path),
-        })
-        shard_ids = set(data.get("image_ids", []))
-        if not shard_ids or len(shard_ids) != len(data["image_ids"]):
-            raise ValueError(f"Shard {s_idx} has missing or duplicate image IDs")
-        overlap = seen_image_ids.intersection(shard_ids)
-        if overlap:
-            raise ValueError(f"Shard {s_idx} contains overlapping images already seen: {overlap}")
-        seen_image_ids.update(shard_ids)
-        total_images_in_shards += len(shard_ids)
-        all_observations.extend(data.get("observations", []))
-
-    summary = {
-        "shards_found": len(shard_reports),
-        "expected_shards": expected_num_shards,
-        "total_unique_images": len(seen_image_ids),
-        "total_observations": len(all_observations),
-        "shards": metadata_list,
-    }
-    return summary, all_observations, sorted(seen_image_ids)
-
-
-def compute_rd_and_bd_rates(
-    all_observations: list[dict],
-    coco,
-    image_ids: list[int],
-) -> dict:
-    """Group observations by (model, seed, crf), run COCOeval, and compute BD-rates."""
-    # Group observations: grouped[(model, seed, crf)] = list of obs dicts
-    grouped = defaultdict(list)
-    for obs in all_observations:
-        model = obs["model"]
-        seed = obs.get("seed")
-        crf = int(obs["crf"])
-        grouped[(model, seed, crf)].append(obs)
-
-    # Compute rate and COCOeval mAP for each group
-    # curves[(detector, model, seed)] = list of (rate_bytes, ap_50_95, ap50) sorted by crf
-    curves = defaultdict(list)
-    detailed_metrics = defaultdict(dict)
-
-    # Check which seeds are present
-    available_seeds = sorted({obs["seed"] for obs in all_observations if obs.get("seed") is not None})
-    if not available_seeds:
-        available_seeds = [0]
-
+def compute_bd_rates(curves: dict, available_seeds: list[int]) -> dict:
+    """Calculate BD-Rates (MPEG Bjontegaard and PAVA-PCHIP) against M1 baseline."""
+    results_bd = {}
     for det in DETECTORS:
-        # 1. Process M1 (Stock x265)
-        for crf in CRF_GRID:
-            obs_list = grouped[("M1", None, crf)]
-            if not obs_list:
-                continue
-            total_bytes = sum(o["whole_bitstream_bytes"] for o in obs_list)
-            all_rows = [r for o in obs_list for r in o[det]["rows"]]
-            m = evaluate_pooled_coco_metrics(coco, image_ids, all_rows)
-            curves[(det, "M1", None)].append({
-                "crf": crf,
-                "bytes": total_bytes,
-                "ap_50_95": m["ap_50_95"],
-                "ap50": m["ap50"],
-            })
-            detailed_metrics[det][f"M1_crf{crf}"] = {**m, "bytes": total_bytes}
-
-        # 2. Process M2, M3, M4 across seeds
-        for model in ("M2", "M3", "M4"):
-            for seed in available_seeds:
-                for crf in CRF_GRID:
-                    obs_list = grouped[(model, seed, crf)]
-                    if not obs_list:
-                        continue
-                    total_bytes = sum(o["whole_bitstream_bytes"] for o in obs_list)
-                    all_rows = [r for o in obs_list for r in o[det]["rows"]]
-                    m = evaluate_pooled_coco_metrics(coco, image_ids, all_rows)
-                    curves[(det, model, seed)].append({
-                        "crf": crf,
-                        "bytes": total_bytes,
-                        "ap_50_95": m["ap_50_95"],
-                        "ap50": m["ap50"],
-                    })
-                    detailed_metrics[det][f"{model}_seed{seed}_crf{crf}"] = {**m, "bytes": total_bytes}
-
-    # 3. Calculate BD-Rates (MPEG Bjontegaard and PAVA-PCHIP)
-    results = {"metrics": detailed_metrics, "bd_rates": {}}
-
-    for det in DETECTORS:
-        results["bd_rates"][det] = {}
-        m1_pts = curves[(det, "M1", None)]
+        results_bd[det] = {}
+        m1_pts = curves.get((det, "M1", None), [])
         if len(m1_pts) < 4:
             continue
         for cand_model in ("M2", "M3", "M4"):
-            results["bd_rates"][det][cand_model] = {}
+            results_bd[det][cand_model] = {}
             seed_bd_map_bjontegaard = []
             seed_bd_map_pava = []
             seed_bd_ap50_bjontegaard = []
@@ -225,24 +131,193 @@ def compute_rd_and_bd_rates(
                     "pava_pchip_bd_rate_map": bd_m_pava,
                     "pava_pchip_bd_rate_ap50": bd_50_pava,
                 }
-                results["bd_rates"][det][cand_model][f"seed_{seed}"] = seed_entry
+                results_bd[det][cand_model][f"seed_{seed}"] = seed_entry
                 if bd_m_bj is not None: seed_bd_map_bjontegaard.append(bd_m_bj)
                 if bd_m_pava is not None: seed_bd_map_pava.append(bd_m_pava)
                 if bd_50_bj is not None: seed_bd_ap50_bjontegaard.append(bd_50_bj)
                 if bd_50_pava is not None: seed_bd_ap50_pava.append(bd_50_pava)
 
-            # Require every seed: undefined curves must not silently disappear.
             def seed_mean(values):
                 return float(np.mean(values)) if len(values) == len(available_seeds) else None
 
-            results["bd_rates"][det][cand_model]["mean"] = {
+            results_bd[det][cand_model]["mean"] = {
                 "bjontegaard_bd_rate_map": seed_mean(seed_bd_map_bjontegaard),
                 "bjontegaard_bd_rate_ap50": seed_mean(seed_bd_ap50_bjontegaard),
                 "pava_pchip_bd_rate_map": seed_mean(seed_bd_map_pava),
                 "pava_pchip_bd_rate_ap50": seed_mean(seed_bd_ap50_pava),
             }
+    return results_bd
 
-    return results
+
+def _evaluate_config_worker(task):
+    det, model, seed, crf, b, chunk_path_str, annotations_str, all_image_ids = task
+    import pickle
+    import time
+    from pathlib import Path
+    from pycocotools.coco import COCO
+    from tier1a.step3_detectors import evaluate_pooled_coco_metrics
+
+    chunk_path = Path(chunk_path_str)
+    rows = []
+    if chunk_path.is_file():
+        with open(chunk_path, "rb") as f:
+            while True:
+                try:
+                    rows.extend(pickle.load(f))
+                except EOFError:
+                    break
+        chunk_path.unlink(missing_ok=True)
+    t0 = time.monotonic()
+    coco = COCO(annotations_str)
+    m = evaluate_pooled_coco_metrics(coco, all_image_ids, rows)
+    dt = time.monotonic() - t0
+    return (det, model, seed, crf, b, m, dt)
+
+
+def stream_shards_and_evaluate(
+    shard_reports: dict[int, Path],
+    expected_num_shards: int,
+    coco,
+    results_dir: Path,
+    annotations_path: Path | None = None,
+    validate_shards: bool = False,
+    max_workers: int = 8,
+) -> tuple[dict, dict]:
+    """Stream shards sequentially, storing detection chunks on disk, then evaluate in parallel."""
+    from tier1b.run_tier1b_val5k import validate_observations
+
+    if set(shard_reports) != set(range(expected_num_shards)):
+        raise ValueError(f"Expected exactly shards 0..{expected_num_shards - 1}")
+
+    seen_image_ids = set()
+    metadata_list = []
+    total_observations = 0
+    total_bytes = defaultdict(int)
+    available_seeds = set()
+    category_ids = set(coco.getCatIds()) if coco else None
+
+    scratch_dir = tempfile.TemporaryDirectory(dir=results_dir, prefix="pool_eval_scratch_")
+    scratch_path = Path(scratch_dir.name)
+
+    try:
+        print(f"Streaming and aggregating {len(shard_reports)} shard reports sequentially (disk scratch: {scratch_path})...", flush=True)
+        t0 = time.monotonic()
+        for s_idx in sorted(shard_reports.keys()):
+            path = shard_reports[s_idx]
+            data = read_json(path)
+            if data.get("shard_idx", s_idx) != s_idx:
+                raise ValueError(f"Shard index mismatch in {path}")
+            shard_img_ids = data.get("image_ids", [])
+            shard_obs = data.get("observations", [])
+            shard_ids_set = set(shard_img_ids)
+            if not shard_ids_set or len(shard_ids_set) != len(shard_img_ids):
+                raise ValueError(f"Shard {s_idx} has missing or duplicate image IDs")
+            overlap = seen_image_ids.intersection(shard_ids_set)
+            if overlap:
+                raise ValueError(f"Shard {s_idx} contains overlapping images already seen: {overlap}")
+            seen_image_ids.update(shard_ids_set)
+            total_observations += len(shard_obs)
+
+            if validate_shards and category_ids is not None:
+                validate_observations(shard_obs, shard_ids_set, CRF_GRID, category_ids)
+
+            shard_chunks = defaultdict(list)
+            for obs in shard_obs:
+                model = obs["model"]
+                seed = obs.get("seed")
+                crf = int(obs["crf"])
+                if seed is not None:
+                    available_seeds.add(seed)
+                model_key = (model, seed, crf)
+                total_bytes[model_key] += obs["whole_bitstream_bytes"]
+                for det in DETECTORS:
+                    shard_chunks[(det, model, seed, crf)].extend(obs[det]["rows"])
+
+            for key, rows in shard_chunks.items():
+                det, model, seed, crf = key
+                chunk_file = scratch_path / f"{det}_{model}_{seed}_{crf}.pkl"
+                with open(chunk_file, "ab") as f:
+                    pickle.dump(rows, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+            metadata_list.append({
+                "shard_idx": s_idx,
+                "image_count": len(shard_img_ids),
+                "observation_count": len(shard_obs),
+                "path": str(path),
+            })
+            del data, shard_obs, shard_img_ids, shard_ids_set, shard_chunks
+            gc.collect()
+            print(f"  [Shard {s_idx:02d}/18] aggregated ({len(seen_image_ids)} images total, elapsed {time.monotonic() - t0:.1f}s)", flush=True)
+
+        summary = {
+            "shards_found": len(shard_reports),
+            "expected_shards": expected_num_shards,
+            "total_unique_images": len(seen_image_ids),
+            "total_observations": total_observations,
+            "shards": metadata_list,
+        }
+
+        if len(seen_image_ids) != 5000:
+            raise ValueError(f"Expected 5,000 images, found {len(seen_image_ids)}")
+        if coco and set(seen_image_ids) != set(coco.getImgIds()):
+            raise ValueError("Shard coverage differs from annotation image IDs")
+
+        if not coco or not annotations_path:
+            print("Note: Annotations not provided; skipping COCO evaluation.")
+            return summary, {}
+
+        seeds_list = sorted(available_seeds) if available_seeds else [0]
+        all_image_ids = sorted(seen_image_ids)
+        curves = defaultdict(list)
+        detailed_metrics = defaultdict(dict)
+
+        tasks = []
+        for det in DETECTORS:
+            for crf in CRF_GRID:
+                key = ("M1", None, crf)
+                b = total_bytes[key]
+                chunk_file = scratch_path / f"{det}_M1_None_{crf}.pkl"
+                tasks.append((det, "M1", None, crf, b, str(chunk_file), str(annotations_path), all_image_ids))
+
+            for model in ("M2", "M3", "M4"):
+                for seed in seeds_list:
+                    for crf in CRF_GRID:
+                        key = (model, seed, crf)
+                        b = total_bytes[key]
+                        chunk_file = scratch_path / f"{det}_{model}_{seed}_{crf}.pkl"
+                        tasks.append((det, model, seed, crf, b, str(chunk_file), str(annotations_path), all_image_ids))
+
+        total_evals = len(tasks)
+        num_workers = min(max_workers, os.cpu_count() or 4)
+        print(f"\nExecuting {total_evals} pooled COCOeval evaluations across 5,000 images using {num_workers} parallel workers...", flush=True)
+        t_eval_start = time.monotonic()
+        completed = 0
+
+        with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
+            future_to_task = {executor.submit(_evaluate_config_worker, t): t for t in tasks}
+            for future in concurrent.futures.as_completed(future_to_task):
+                completed += 1
+                det, model, seed, crf, b, m, dt = future.result()
+                curves[(det, model, seed)].append({
+                    "crf": crf,
+                    "bytes": b,
+                    "ap_50_95": m["ap_50_95"],
+                    "ap50": m["ap50"],
+                })
+                metric_key = f"M1_crf{crf}" if model == "M1" else f"{model}_seed{seed}_crf{crf}"
+                detailed_metrics[det][metric_key] = {**m, "bytes": b}
+                seed_str = "" if seed is None else f"seed={seed} "
+                print(f"  [{completed:03d}/{total_evals}] {det:11s} {model:2s} {seed_str:7s}CRF={crf} -> mAP={m['ap_50_95']:.4f}, AP50={m['ap50']:.4f} ({dt:.1f}s)", flush=True)
+
+        for k in curves:
+            curves[k].sort(key=lambda p: p["crf"])
+
+        print(f"COCO evaluations complete in {time.monotonic() - t_eval_start:.1f}s.", flush=True)
+        bd_rates = compute_bd_rates(curves, seeds_list)
+        results = {"metrics": detailed_metrics, "bd_rates": bd_rates}
+        return summary, results
+    finally:
+        scratch_dir.cleanup()
 
 
 def print_summary_table(results: dict, summary: dict):
@@ -281,6 +356,8 @@ def main():
     parser.add_argument("--annotations", type=Path, help="Path to instances_val2017.json for COCOeval")
     parser.add_argument("--output", type=Path, help="Path to save merged report JSON")
     parser.add_argument("--num-shards", type=int, default=19, help="Expected number of shards (default: 19)")
+    parser.add_argument("--validate-shards", action="store_true", help="Re-validate per-shard observations during aggregation")
+    parser.add_argument("--max-workers", type=int, default=8, help="Number of parallel workers for COCOeval (default: 8)")
     args = parser.parse_args()
 
     if args.download:
@@ -293,9 +370,6 @@ def main():
         sys.exit(1)
 
     print(f"Found {len(shard_reports)} shard reports in {args.results_dir}")
-    summary, all_observations, image_ids = merge_shard_data(shard_reports, args.num_shards)
-    if len(image_ids) != 5000:
-        raise ValueError(f"Expected 5,000 images, found {len(image_ids)}")
 
     coco = None
     if args.annotations and args.annotations.is_file():
@@ -303,16 +377,13 @@ def main():
         print(f"Loading COCO annotations from {args.annotations}...")
         coco = COCO(str(args.annotations))
 
-    if coco:
-        if set(image_ids) != set(coco.getImgIds()):
-            raise ValueError("Shard coverage differs from annotation image IDs")
-        from tier1b.run_tier1b_val5k import validate_observations
-        validate_observations(all_observations, image_ids, CRF_GRID, set(coco.getCatIds()))
-        results = compute_rd_and_bd_rates(all_observations, coco, image_ids)
+    summary, results = stream_shards_and_evaluate(
+        shard_reports, args.num_shards, coco, args.results_dir,
+        annotations_path=args.annotations, validate_shards=args.validate_shards,
+        max_workers=args.max_workers
+    )
+    if results:
         print_summary_table(results, summary)
-    else:
-        print("Note: Annotations not provided or found; skipped COCOeval and BD-rate calculation.")
-        results = {}
 
     output_path = args.output if args.output else (args.results_dir / "tier1b_val5k_final_report.json")
     final_data = {

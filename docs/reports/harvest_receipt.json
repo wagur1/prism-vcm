@@ -1,0 +1,98 @@
+{
+  "artifacts_dir": "C:\\Users\\Wagur1\\Desktop\\HOI_DONG_9\\results_tier1b\\paper_artifacts",
+  "completed_at": "2026-11-03T04:44:43.998121+00:00",
+  "inputs": {
+    "annotations_sha256": "e8c7f7908f1d7278341fae127d0da654f102f11bd7b21d8aeefa635b8c810b6f",
+    "shards": [
+      {
+        "sha256": "76fc0be04b52a3a2f1b113abfe62c9be900007c56728cbacaa934780bb8cb581",
+        "shard_idx": 0
+      },
+      {
+        "sha256": "76ec5bd371ffeb7d3f8220f1784cd719568a6c98d12d5b8b8c98fc3f527ba0d0",
+        "shard_idx": 1
+      },
+      {
+        "sha256": "fcf25bd89d46e7dad298e2dc983ce3a45f64b69ae3dabe81ceeb433c846c8142",
+        "shard_idx": 2
+      },
+      {
+        "sha256": "fa43efc45828fdbfb4d96c691d2a5aa5cd66fa4d52085070fd8e95632a1fb816",
+        "shard_idx": 3
+      },
+      {
+        "sha256": "6bff0b83b055ebb9165c84f4309cc9cd70a0d7d7ba7f4fb78068ab670c80aec9",
+        "shard_idx": 4
+      },
+      {
+        "sha256": "c0e426447261d83cf090490a7ae699109f6434985bb920e0e3f2c67494a95b8a",
+        "shard_idx": 5
+      },
+      {
+        "sha256": "fcd38ed916bcadd0c08101dadb21ea1475bda4d1fb1ef1af6995098045b25a8e",
+        "shard_idx": 6
+      },
+      {
+        "sha256": "abaf6af6694f5c95767d722e072c857ad2506186b71d81a176560bc9b61aea7c",
+        "shard_idx": 7
+      },
+      {
+        "sha256": "418d8e7bff947a143d801dc59401ca05cd3464adc51ed3c19f8aa4e02a51a1a2",
+        "shard_idx": 8
+      },
+      {
+        "sha256": "d7145dc48bf0a2785634582d6c7fe3e97bce5e684fbd8e97f7ddeead01c64a51",
+        "shard_idx": 9
+      },
+      {
+        "sha256": "451711bdefd3b72628333fbfe2f9adacbb943f85e7ca3abf64e42c552aa61600",
+        "shard_idx": 10
+      },
+      {
+        "sha256": "b3eb238549c915e481a835365a47081051cd9da7c2231a919cbe541a91a0f893",
+        "shard_idx": 11
+      },
+      {
+        "sha256": "c9e47c3facfd802a57281c6274e830916bb3a751a77add6f81081fb4bac76f72",
+        "shard_idx": 12
+      },
+      {
+        "sha256": "4a79deb0a57667e613dd5ccef5a4622a6f9082f1d06d6d920e8dd03f01181adf",
+        "shard_idx": 13
+      },
+      {
+        "sha256": "d354951ae7207b9b10fe77bb4091077bddbaf3f5e7343c8294c95ebe002a187b",
+        "shard_idx": 14
+      },
+      {
+        "sha256": "3bfc339e65da22a007a9d05f957a0dd34e8020c3725a7dcfac314261e5352ec7",
+        "shard_idx": 15
+      },
+      {
+        "sha256": "09ce65606f752de57ca18ce62cfc2e8be239309d5ca7732693cb4bd85f0bb958",
+        "shard_idx": 16
+      },
+      {
+        "sha256": "67beb32debd520f9de0932ff4b37e124034ec546061a5b54a726fc327433f80d",
+        "shard_idx": 17
+      },
+      {
+        "sha256": "525d192a9dbcb3dafa47e74b19ea0ff02f9bbd3904c500b99984c76ee3b4e6b9",
+        "shard_idx": 18
+      }
+    ]
+  },
+  "outputs": {
+    "C:\\Users\\Wagur1\\Desktop\\HOI_DONG_9\\results_tier1b\\paper_artifacts\\bd_rate_comparison.pdf": "98e928f91591d83bd52ac395f5c09b34f163bba8ca738b465270784f9219f853",
+    "C:\\Users\\Wagur1\\Desktop\\HOI_DONG_9\\results_tier1b\\paper_artifacts\\bd_rate_comparison.png": "ebd0bf302818ec07d5b6524d65f48f88c74f46d1a670e9685ee10505f194d63c",
+    "C:\\Users\\Wagur1\\Desktop\\HOI_DONG_9\\results_tier1b\\paper_artifacts\\rd_curves.pdf": "97f38211b56d443081a381615a04b8731157dc78d4ead50ebcdaf34463e2bf60",
+    "C:\\Users\\Wagur1\\Desktop\\HOI_DONG_9\\results_tier1b\\paper_artifacts\\rd_curves.png": "998015e65104c241b709af7796be1b27fe985687e123017c59a6ee7768d0a332",
+    "C:\\Users\\Wagur1\\Desktop\\HOI_DONG_9\\results_tier1b\\paper_artifacts\\table_cross_detector.tex": "cc03fa750908f0096121ea45a7f313397728651d7066575b81b4629534ff5f88",
+    "C:\\Users\\Wagur1\\Desktop\\HOI_DONG_9\\results_tier1b\\paper_artifacts\\table_m1_m4_coco.tex": "a7b8581af81ce02d6cec4bf3d7c598348864daf9edbdcf091cc1de9a62643864",
+    "C:\\Users\\Wagur1\\Desktop\\HOI_DONG_9\\results_tier1b\\tier1b_val5k_final_report.json": "5acaf660097e41e240ad4645676dc7652530fb8bda9d93663a11753aed36a090"
+  },
+  "report": "C:\\Users\\Wagur1\\Desktop\\HOI_DONG_9\\results_tier1b\\tier1b_val5k_final_report.json",
+  "shards_complete": 19,
+  "status": "complete",
+  "total_images": 5000
+}

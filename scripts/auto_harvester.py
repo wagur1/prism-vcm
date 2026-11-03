@@ -68,6 +68,8 @@ def account_environment(account: dict) -> dict:
         env.pop(key, None)
     env["KAGGLE_API_TOKEN"] = str(account["key"])
     env["KAGGLE_CONFIG_DIR"] = str(account["dir"])
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
     return env
 
 
@@ -86,12 +88,19 @@ def check_shard_status(shard_idx: int, account: dict) -> str:
 
 
 def download_shard_outputs(shard_idx: int, account: dict, directory: Path) -> None:
-    """Download every output page; retain partial output for retry after failure."""
+    """Download only shard_{shard_idx}_report.json; retain partial output for retry after failure."""
     directory.mkdir(parents=True, exist_ok=True)
     pending = directory / ".download_in_progress"
     pending.touch()
     kernel = f"{account['username']}/prism-tier1b-shard{shard_idx}"
-    arguments = ["output", kernel, "-p", str(directory), "--force"]
+    file_pattern = f"^shard_{shard_idx}_report\\.json$"
+    arguments = [
+        "output", kernel,
+        "-p", str(directory),
+        "--file-pattern", file_pattern,
+        "--page-size", "200",
+        "--force",
+    ]
     seen_tokens = set()
     while True:
         output = run_kaggle(account, arguments, timeout=3600)
@@ -102,8 +111,16 @@ def download_shard_outputs(shard_idx: int, account: dict, directory: Path) -> No
         if token in seen_tokens:
             raise ValueError("Kaggle repeated an output page token")
         seen_tokens.add(token)
-        arguments = ["output", kernel, "-p", str(directory), "--force", "--page-token", token]
-    pending.unlink()
+        arguments = [
+            "output", kernel,
+            "-p", str(directory),
+            "--file-pattern", file_pattern,
+            "--page-size", "200",
+            "--force",
+            "--page-token", token,
+        ]
+    if pending.exists():
+        pending.unlink()
 
 
 def validate_shard_report(path: Path, shard_idx: int, *, expected_ids=None,
