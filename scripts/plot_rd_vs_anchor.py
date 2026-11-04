@@ -151,13 +151,19 @@ def plot_rd_curves_vs_anchor(data, bd_rates, output_dir: Path):
                     linewidth=cfg["linewidth"], marker=cfg["marker"],
                     markersize=4.5, zorder=cfg["zorder"], label=cfg["label"])
             
-        # Shaded region between Anchor and M2_asym_prefilter (showing rate savings)
-        pref_x, pref_y = cand_curves["M2_asym_prefilter"]
-        # Interpolate Anchor to candidate AP levels or vice versa for shaded visual
-        ax.fill_betweenx(
-            pref_y, pref_x, np.interp(pref_y, m1_y, m1_x),
-            color="#D55E00", alpha=0.12, label="Bitrate Saved vs Anchor"
-        )
+        # Shaded region between Anchor and M2_asym_prefilter strictly within common quality support
+        pref_x, pref_y = np.array(cand_curves["M2_asym_prefilter"][0]), np.array(cand_curves["M2_asym_prefilter"][1])
+        m1_x_arr, m1_y_arr = np.array(m1_x), np.array(m1_y)
+        min_ap = max(float(pref_y.min()), float(m1_y_arr.min()))
+        max_ap = min(float(pref_y.max()), float(m1_y_arr.max()))
+        if min_ap < max_ap:
+            grid_y = np.linspace(min_ap, max_ap, 100)
+            interp_pref_x = np.interp(grid_y, pref_y, pref_x)
+            interp_m1_x = np.interp(grid_y, m1_y_arr, m1_x_arr)
+            ax.fill_betweenx(
+                grid_y, interp_pref_x, interp_m1_x,
+                color="#D55E00", alpha=0.12, label="Bitrate Saved vs Anchor (Common Support)"
+            )
         
         # Annotation text box for BD-rates
         bds = bd_rates[det]
@@ -178,7 +184,7 @@ def plot_rd_curves_vs_anchor(data, bd_rates, output_dir: Path):
                 bbox=dict(boxstyle="round,pad=0.35", facecolor="white", edgecolor="#cccccc", alpha=0.92))
         
         ax.set_title(title, fontweight="bold", pad=7)
-        ax.set_xlabel("Total Bitstream Size (MB on 4,737 images)")
+        ax.set_xlabel("Total Bitstream Size (MiB on 4,737 images)")
         ax.set_ylabel(ylabel)
         ax.set_xlim(150, 970)
         
