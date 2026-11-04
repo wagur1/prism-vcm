@@ -37,9 +37,9 @@ MODELS = ("M1", "M2", "M2_asym", "M2_asym_prefilter", "M3", "M4")
 DETECTORS = ("yolo11l", "faster_rcnn")
 
 
-def merge_shard_data(reports: dict[int, Path], expected_num_shards: int = 19) -> tuple[dict, list[dict], list[int]]:
+def merge_shard_data(reports: dict[int, Path], expected_num_shards: int = 19, allow_partial: bool = False) -> tuple[dict, list[dict], list[int]]:
     """Aggregate shard reports and return summary, all observations, and sorted unique image IDs."""
-    if set(reports.keys()) != set(range(expected_num_shards)):
+    if not allow_partial and set(reports.keys()) != set(range(expected_num_shards)):
         raise ValueError(f"Expected exactly shards 0..{expected_num_shards - 1}")
     seen_image_ids = set()
     all_obs = []
@@ -256,11 +256,12 @@ def stream_shards_and_evaluate(
     annotations_path: Path | None = None,
     validate_shards: bool = False,
     max_workers: int = 8,
+    allow_partial: bool = False,
 ) -> tuple[dict, dict]:
     """Stream shards sequentially, storing detection chunks on disk, then evaluate in parallel."""
     from tier1b.run_tier1b_val5k import validate_observations
 
-    if set(shard_reports) != set(range(expected_num_shards)):
+    if not allow_partial and set(shard_reports) != set(range(expected_num_shards)):
         raise ValueError(f"Expected exactly shards 0..{expected_num_shards - 1}")
 
     seen_image_ids = set()
@@ -329,11 +330,12 @@ def stream_shards_and_evaluate(
             "total_unique_images": len(seen_image_ids),
             "total_observations": total_observations,
             "shards": metadata_list,
+            "allow_partial": allow_partial,
         }
 
-        if len(seen_image_ids) != 5000:
+        if not allow_partial and len(seen_image_ids) != 5000:
             raise ValueError(f"Expected 5,000 images, found {len(seen_image_ids)}")
-        if coco and set(seen_image_ids) != set(coco.getImgIds()):
+        if not allow_partial and coco and set(seen_image_ids) != set(coco.getImgIds()):
             raise ValueError("Shard coverage differs from annotation image IDs")
 
         if not coco or not annotations_path:
@@ -433,6 +435,7 @@ def main():
     parser.add_argument("--num-shards", type=int, default=19, help="Expected number of shards (default: 19)")
     parser.add_argument("--validate-shards", action="store_true", help="Re-validate per-shard observations during aggregation")
     parser.add_argument("--max-workers", type=int, default=8, help="Number of parallel workers for COCOeval (default: 8)")
+    parser.add_argument("--allow-partial", action="store_true", help="Allow merging partial shards (e.g. 18 of 19)")
     args = parser.parse_args()
 
     if args.download:
@@ -455,7 +458,7 @@ def main():
     summary, results = stream_shards_and_evaluate(
         shard_reports, args.num_shards, coco, args.results_dir,
         annotations_path=args.annotations, validate_shards=args.validate_shards,
-        max_workers=args.max_workers
+        max_workers=args.max_workers, allow_partial=args.allow_partial,
     )
     if results:
         print_summary_table(results, summary)

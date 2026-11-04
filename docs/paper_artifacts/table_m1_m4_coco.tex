@@ -3,35 +3,35 @@
 \centering
 \small
 \setlength{\tabcolsep}{3pt}
-\caption{COCO val2017 (5,000 images) with YOLOv11-L. Bitstream bytes are totals over the evaluation set. BD reduction (positive = saving) is shown once per model for AP@[.50:.95], in MPEG / PAVA-PCHIP order. AP values are percentages. M2--M4 entries are equal-weight seed means; M1 is shared across seeds. BD values compare full five-CRF curves with M1, averaged over seeds; an undefined seed makes the mean unavailable (\textemdash). MPEG and PAVA-PCHIP are supplemental analyses, not raw-gate decisions. }
+\caption{COCO val2017 (4,737 images) with YOLOv11-L. Bitstream bytes are totals over the evaluation set. BD reduction (positive = saving) is shown once per model for AP@[.50:.95], in MPEG / PAVA-PCHIP order. AP values are percentages. M2--M4 entries are equal-weight seed means; M1 is shared across seeds. BD values compare full five-CRF curves with M1, averaged over seeds; an undefined seed makes the mean unavailable (\textemdash). MPEG and PAVA-PCHIP are supplemental analyses, not raw-gate decisions. }
 \label{tab:m1-m4-coco}
 \begin{tabular}{llrrrrr}
 \toprule
 Model & CRF & Bitstream bytes & mAP@[.50:.95] & AP50 & AP$_{\rm small}$ & BD reduction (\%) \\
 \midrule
-M1 & 20 & 971,581,774 & 49.58 & 65.82 & 29.91 & 0.00 / 0.00 \\
-M1 & 24 & 689,072,407 & 49.43 & 65.71 & 29.96 &  \\
-M1 & 28 & 475,795,386 & 49.34 & 65.56 & 29.49 &  \\
-M1 & 32 & 320,014,885 & 48.99 & 65.16 & 29.18 &  \\
-M1 & 36 & 210,032,152 & 48.27 & 64.37 & 27.45 &  \\
+M1 & 20 & 921,481,566 & 49.62 & 65.92 & 30.22 & 0.00 / 0.00 \\
+M1 & 24 & 653,593,090 & 49.49 & 65.81 & 30.25 &  \\
+M1 & 28 & 451,286,791 & 49.38 & 65.66 & 29.61 &  \\
+M1 & 32 & 303,521,140 & 49.05 & 65.30 & 29.36 &  \\
+M1 & 36 & 199,183,371 & 48.32 & 64.49 & 27.57 &  \\
 \midrule
-M2 & 20 & 977,366,858 & 49.62 & 65.89 & 30.00 & 9.12 / 6.79 \\
-M2 & 24 & 693,611,381 & 49.55 & 65.85 & 29.79 &  \\
-M2 & 28 & 479,307,916 & 49.39 & 65.64 & 29.41 &  \\
-M2 & 32 & 322,741,008 & 49.05 & 65.23 & 29.17 &  \\
-M2 & 36 & 212,010,130 & 48.28 & 64.42 & 27.19 &  \\
+M2 & 20 & 923,940,150 & 49.68 & 66.01 & 30.32 & 5.75 / 4.79 \\
+M2 & 24 & 655,627,483 & 49.58 & 65.90 & 30.00 &  \\
+M2 & 28 & 452,969,899 & 49.39 & 65.65 & 29.69 &  \\
+M2 & 32 & 304,898,680 & 49.11 & 65.40 & 28.72 &  \\
+M2 & 36 & 200,273,106 & 48.29 & 64.48 & 27.64 &  \\
 \midrule
-M3 & 20 & 971,589,756 & 49.55 & 65.84 & 29.93 & -6.50 / -7.60 \\
-M3 & 24 & 689,064,163 & 49.44 & 65.73 & 29.83 &  \\
-M3 & 28 & 475,784,869 & 49.24 & 65.51 & 29.49 &  \\
-M3 & 32 & 320,004,869 & 48.89 & 65.09 & 28.87 &  \\
-M3 & 36 & 210,039,312 & 48.23 & 64.29 & 28.24 &  \\
+M2_asym & 20 & 877,515,480 & 49.65 & 65.96 & 30.12 & 4.77 / 8.14 \\
+M2_asym & 24 & 625,603,148 & 49.56 & 65.90 & 30.05 &  \\
+M2_asym & 28 & 435,341,272 & 49.45 & 65.72 & 29.12 &  \\
+M2_asym & 32 & 299,074,989 & 49.10 & 65.39 & 29.03 &  \\
+M2_asym & 36 & 198,129,309 & 48.32 & 64.55 & 27.65 &  \\
 \midrule
-\textbf{M4} & 20 & 977,364,401 & 49.53 & 65.83 & 29.89 & -0.61 / 0.41 \\
-\textbf{M4} & 24 & 693,607,722 & 49.49 & 65.77 & 29.70 &  \\
-\textbf{M4} & 28 & 479,302,902 & 49.32 & 65.51 & 29.39 &  \\
-\textbf{M4} & 32 & 322,746,507 & 48.99 & 65.15 & 29.07 &  \\
-\textbf{M4} & 36 & 212,014,940 & 48.26 & 64.44 & 27.63 &  \\
+\textbf{M2_asym_prefilter} & 20 & 864,461,767 & 49.68 & 66.01 & 30.21 & 4.17 / 6.43 \\
+\textbf{M2_asym_prefilter} & 24 & 616,825,067 & 49.63 & 65.94 & 29.93 &  \\
+\textbf{M2_asym_prefilter} & 28 & 429,581,097 & 49.43 & 65.70 & 29.67 &  \\
+\textbf{M2_asym_prefilter} & 32 & 296,528,256 & 49.02 & 65.33 & 28.62 &  \\
+\textbf{M2_asym_prefilter} & 36 & 196,803,616 & 48.30 & 64.48 & 27.78 &  \\
 \bottomrule
 \end{tabular}
 \end{table*}
