@@ -1,0 +1,23 @@
+{
+  "kind": "controller_forward_probe",
+  "commit": "497eff64aa5855fb8951be9ec935b108a9af40e2",
+  "checkpoint_sha256": "623b774ba216e7c0e39ce233f7e2cab78f5448acaa2f3ec01e47fe3ffd32c345",
+  "encoder_run": false,
+  "training_run": false,
+  "maximum_forwards": 36,
+  "status": "complete",
+  "stage": "complete",
+  "sequence": "MOT17-04-FRCNN",
+  "completed": [
+    {
+      "sequence": "MOT17-02-FRCNN",
+      "records": 18,
+      "report_sha256": "269a6107390a2deec0af83793ce4a4a829bc8a960a0f4935f706954104c26660"
+    },
+    {
+      "sequence": "MOT17-04-FRCNN",
+      "records": 18,
+      "report_sha256": "78b85b23f428497fd95c5ec563303d39ced46de65790bd258285af1ea5d39c20"
+    }
+  ]
+}

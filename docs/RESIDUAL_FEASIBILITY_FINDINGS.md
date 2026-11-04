@@ -69,7 +69,46 @@ Thiết kế probe không encode và không train:
 - So sánh các phép chiếu đối xứng `[-6,+6]`, `[-5,+5]` và bất đối xứng `[-4,+6]`, có/không compensation. Đây chỉ là chẩn đoán bản đồ, không phải hiệu quả codec.
 - Không đổi cap hoặc lựa chọn frame theo kết quả đẹp; không sửa weights.
 
-Kết quả probe sẽ được bổ sung riêng sau khi artifact đã thu và kiểm tra. Thiết kế ở đây không phải bằng chứng probe đã chạy.
+Probe đã hoàn tất 36/36 forward, không encode, không train. Kernel: [trnhlng/prism-raw-probe-497eff6-1104-173818](https://www.kaggle.com/code/trnhlng/prism-raw-probe-497eff6-1104-173818). Mã probe pin `497eff64aa5855fb8951be9ec935b108a9af40e2`; checkpoint khớp feasibility. Môi trường: torch `2.11.0+cu130`, timm `1.0.30`, numpy `2.1.3`, khớp các phiên bản tương ứng trong benchmark.
+
+### Kết quả raw-output
+
+| Nguồn | CRF | Logit nhỏ nhất | Residual native nhỏ nhất | Residual lớn nhất | Tỷ lệ abs(residual) >= 7.99 |
+|---|---:|---:|---:|---:|---:|
+| MOT17-02 | 22 | 4.81435 | 7.998947 | 8.0 | 100% |
+| MOT17-02 | 32 | 4.78480 | 7.998883 | 8.0 | 100% |
+| MOT17-02 | 37 | 4.76902 | 7.998847 | 8.0 | 100% |
+| MOT17-04 | 22 | 4.41846 | 7.997676 | 8.0 | 100% |
+| MOT17-04 | 32 | 4.39930 | 7.997585 | 8.0 | 100% |
+| MOT17-04 | 37 | 4.38903 | 7.997535 | 8.0 | 100% |
+
+Raw logit trên tất cả records nằm trong [4.38903,18.16965]. Dùng lại công thức `8*tanh(interpolate(logits))` khôi phục đúng đầu ra model: sai số lớn nhất bằng 0 ở cả 36 records.
+
+**Kết luận được hỗ trợ:** residual bị bão hòa về +8 trước cap trên tập frame/CRF đã kiểm tra. Cap1 chỉ biến đầu ra đã bão hòa thành +1. Không chỉ là giả thuyết clipping một bản đồ còn nhiều biến thiên. Raw logits vẫn có biến thiên; không gọi mọi tầng là hằng số hoặc kết luận bão hòa trên mọi dữ liệu.
+
+### Kết quả QP
+
+- Bản đồ sau phép chiếu zero-mean nằm trong khoảng xấp xỉ [−1.483475,+1.162764].
+- Cả ba khoảng `[-6,+6]`, `[-5,+5]`, `[-4,+6]` đều có **0% cap occupancy** trên 36 records.
+- Sai khác lớn nhất giữa đối xứng và bất đối xứng chỉ `5.96e-8` offset, phù hợp sai số tính toán. Không khẳng định bitstream giống nhau từ phép forward-only này.
+- Compensation làm mean map tăng khoảng 0.00462–0.00806 QP; không phải bitrate đo thật.
+
+**Kết luận được hỗ trợ:** các giới hạn bất đối xứng hiện tại không tạo can thiệp đáng kể trên tập input của probe. Kết quả đó giải thích tính gần đồng nhất của requested maps, không chứng minh codec bỏ qua controls hoặc mọi phương pháp asymmetric allocation vô ích.
+
+### Quyết định tiếp theo
+
+1. Dừng mở rộng encode với checkpoint residual này. Tăng cap 2/3 trên các input probe vẫn tạo mức tăng sáng đồng đều lớn hơn.
+2. Không huấn luyện lại hoặc reinitialize toàn model dựa trên phép đo này. Cần tách tác động normalization/train–eval, conditioning và từng thành phần gradient trên tập development/calibration có provenance.
+3. Giữ QP bất đối xứng làm câu hỏi nghiên cứu, nhưng không lấy phép đổi khoảng chặn không hoạt động làm novelty đã xác nhận.
+4. Chưa chạy ablation teacher hoặc RL; dữ liệu/thiết kế đó chưa đủ để phân biệt nguyên nhân.
+
+### Raw artifact identities
+
+| Artifact | SHA256 |
+|---|---|
+| MOT17-02-FRCNN/controller_diagnostics.json | `269a6107390a2deec0af83793ce4a4a829bc8a960a0f4935f706954104c26660` |
+| MOT17-04-FRCNN/controller_diagnostics.json | `78b85b23f428497fd95c5ec563303d39ced46de65790bd258285af1ea5d39c20` |
+| probe_state.json | `a0c6954e4eb9d3cc89865c97e49a2c272a11b8cf9da5f55ad7f089e4009e531a` |
 
 ## Tham chiếu artifacts đã thu
 
