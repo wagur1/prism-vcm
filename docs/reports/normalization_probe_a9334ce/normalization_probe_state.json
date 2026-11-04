@@ -1,0 +1,9 @@
+{
+  "kind": "normalization_probe",
+  "commit": "a9334ceeb53872b1c581c49efe7a03626dd5118d",
+  "training_run": false,
+  "encodes": 0,
+  "checkpoint_sha256": "623b774ba216e7c0e39ce233f7e2cab78f5448acaa2f3ec01e47fe3ffd32c345",
+  "status": "complete",
+  "stage": "complete"
+}

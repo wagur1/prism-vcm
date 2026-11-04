@@ -110,6 +110,51 @@ Raw logit trên tất cả records nằm trong [4.38903,18.16965]. Dùng lại c
 | MOT17-04-FRCNN/controller_diagnostics.json | `78b85b23f428497fd95c5ec563303d39ced46de65790bd258285af1ea5d39c20` |
 | probe_state.json | `a0c6954e4eb9d3cc89865c97e49a2c272a11b8cf9da5f55ad7f089e4009e531a` |
 
+## Probe normalization và conditioning: kết quả đã đo
+
+Kernel [trnhlng/prism-bn-probe-a9334ce-1104-175119](https://www.kaggle.com/code/trnhlng/prism-bn-probe-a9334ce-1104-175119), mã pin `a9334ceeb53872b1c581c49efe7a03626dd5118d`.
+
+Tám ảnh cố định: frame1/16/33/40 của MOT17-02 và MOT17-04. Sáu batch forward ở CRF32: ba chế độ, mỗi chế độ có batch trộn tám ảnh và batch lặp ảnh đầu tiên tám lần. Không optimizer, không encode, không ghi checkpoint.
+
+Chế độ BN batch statistics giữ nguyên forward gốc của `BatchNormAct2d`, activation và eval flags. Chỉ tạm thay running_mean/running_var bằng None, track_running_stats=False, momentum=0 trong lúc gọi BN. Tham chiếu buffers được khôi phục trong finally; toàn bộ state_dict được đối chiếu trước/sau. Đây là can thiệp chẩn đoán, không phải đề xuất dùng batch statistics của test set khi triển khai.
+
+| Chế độ | Thành phần batch | Residual nhỏ nhất | Residual trung bình | Tỷ lệ abs(residual)>=7.99 |
+|---|---|---:|---:|---:|
+| Eval gốc | Trộn 8 ảnh | 7.997585 | 7.999974 | 100% |
+| Eval gốc | Lặp ảnh đầu | 7.998967 | 7.999979 | 100% |
+| BN dùng batch statistics | Trộn 8 ảnh | 7.999285 | 7.999997 | 100% |
+| BN dùng batch statistics | Lặp ảnh đầu | 7.999679 | 7.999996 | 100% |
+| Bỏ QP conditioning | Trộn 8 ảnh | 7.999765 | 7.999999 | 100% |
+| Bỏ QP conditioning | Lặp ảnh đầu | 7.999912 | 7.999999 | 100% |
+
+Report xác nhận `state_unchanged=true`, `source_files_unchanged=true`, 45 BN layers và 6 batch forwards. Torch `2.11.0+cu130`; launcher yêu cầu timm `1.0.30`. Reconstructed tanh output khớp actual output, max error bằng 0.
+
+### Kết luận có giới hạn
+
+- Thay running statistics bằng batch statistics **không giải quyết** bão hòa trên tập probe.
+- Bỏ QP conditioning **không giải quyết** bão hòa; output còn gần +8 hơn trong phép thử này.
+- Không đủ căn cứ sửa BN hoặc bỏ conditioning để tuyên bố đã sửa lỗi.
+- Bão hòa tồn tại trong mapping residual của checkpoint hiện tại dưới nhiều điều kiện forward; chưa xác định thời điểm hoặc cơ chế lịch sử gây ra nó.
+- Không được nói đã loại trừ mọi vai trò của BN hoặc conditioning trong quá trình học: probe chỉ kiểm tra can thiệp ở inference.
+
+### Khuyến nghị sau khi hoàn tất hai probe
+
+1. Không mở rộng RD benchmark với residual checkpoint này và không tăng cap để tìm kết quả đẹp.
+2. Giữ artifacts/checkpoint cũ nguyên vẹn làm negative result.
+3. Trước khi sửa training: đo từng thành phần loss/gradient trên dữ liệu train/calibration có provenance; đối chiếu objective, proxy đã fitted hay chưa, và raw-QP versus projected-QP trong train/deploy.
+4. Nếu nghiên cứu huấn luyện lại residual head, thiết kế riêng với initialization gần identity, giữ QP/backbone cố định trong đối chứng đầu tiên, và giám sát rate–task hợp lệ. Đây chỉ là kế hoạch tiếp theo; lượt này không huấn luyện.
+5. Không làm E3 teacher ablation hoặc thêm temporal/RL khi hai nhánh điều khiển chưa được chứng minh có giá trị.
+
+Raw artifacts:
+- `normalization/controller_normalization.json`: SHA256 `22a8fc4e00c9a2dcc293992592a437c3a8b89c4ae69ddf2cc3a905940a1a4332`.
+- `normalization_probe_state.json`: SHA256 `acce17d469d9a93bf35a16dabffae9f8fd0ace1de25b0abb636625d9b0cc58e9`.
+
+## Phạm vi hoàn tất và việc chưa làm
+
+Đã hoàn tất thống kê bảy feasibility shards, probe raw-output, probe normalization/conditioning, các tests và tổng hợp sáu bài trong `PREPROCESSING_LITERATURE_APPLICATION.md`.
+
+Chưa có training mới, teacher-value ablation, proxy calibration thật, kiểm chứng đa seed hoặc benchmark đầy đủ. Không có tuyên bố novelty hoặc journal readiness từ những phép thử này. Các lỗi dispatcher cũ không được sửa trong lượt chẩn đoán.
+
 ## Tham chiếu artifacts đã thu
 
 | Sequence | Kernel | SHA256 của feasibility_report.json |

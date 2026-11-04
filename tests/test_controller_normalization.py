@@ -160,6 +160,29 @@ class ProbeTests(unittest.TestCase):
         self.assertTrue(all(torch.equal(before[k], v) for k, v in model.state_dict().items()))
 
     @unittest.skipIf(torch is None, "torch is not installed")
+    def test_bn_buffer_references_restore_when_original_bn_forward_raises(self):
+        class BrokenBN(torch.nn.BatchNorm2d):
+            def forward(self, x):
+                super().forward(x)
+                raise RuntimeError("BN failed")
+
+        model = Controller().eval()
+        bn = model.backbone.bn = BrokenBN(2).eval()
+        mean, variance, counter = bn.running_mean, bn.running_var, bn.num_batches_tracked
+        with self.assertRaisesRegex(RuntimeError, "BN failed"):
+            self.cli.probe_batch(model, torch.zeros(2, 3, 256, 256), 32, "bn_batchstats")
+        self.assertIs(bn.running_mean, mean)
+        self.assertIs(bn.running_var, variance)
+        self.assertIs(bn.num_batches_tracked, counter)
+        self.assertEqual(int(counter), 0)
+        self.assertTrue(bn.track_running_stats)
+        self.assertEqual(bn.momentum, .1)
+        self.assertFalse(bn.training)
+        self.assertNotIn("forward", bn.__dict__)
+        self.assertFalse(model.backbone._forward_hooks)
+        self.assertFalse(model.residual_head._forward_hooks)
+
+    @unittest.skipIf(torch is None, "torch is not installed")
     def test_composition_affects_batchstats_but_not_eval_with_six_forwards(self):
         model = Controller().eval()
         x = torch.cat([torch.zeros(1, 3, 256, 256), torch.ones(1, 3, 256, 256)])
