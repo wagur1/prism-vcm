@@ -216,7 +216,10 @@ def push_shard_kernel(kernel_dir: Path, account: dict, dry_run: bool = False) ->
         return True
 
     env = os.environ.copy()
+    for key in ("KAGGLE_USERNAME", "KAGGLE_KEY", "KAGGLE_API_TOKEN"):
+        env.pop(key, None)
     env["KAGGLE_API_TOKEN"] = str(account["key"])
+    env["KAGGLE_CONFIG_DIR"] = str(account["dir"])
     cmd = [sys.executable, "-m", "kaggle", "kernels", "push", "-p", str(kernel_dir)]
     try:
         res = subprocess.run(cmd, env=env, capture_output=True, text=True, check=True)
@@ -232,7 +235,10 @@ def check_shard_status(shard_idx: int, account: dict) -> dict:
     username = account["username"]
     kernel_id = f"{username}/prism-tier1b-shard{shard_idx}"
     env = os.environ.copy()
+    for key in ("KAGGLE_USERNAME", "KAGGLE_KEY", "KAGGLE_API_TOKEN"):
+        env.pop(key, None)
     env["KAGGLE_API_TOKEN"] = str(account["key"])
+    env["KAGGLE_CONFIG_DIR"] = str(account["dir"])
     cmd = [sys.executable, "-m", "kaggle", "kernels", "status", kernel_id]
     try:
         res = subprocess.run(cmd, env=env, capture_output=True, text=True, check=True)
