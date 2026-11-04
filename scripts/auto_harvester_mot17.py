@@ -102,7 +102,20 @@ def check_status(account: dict, kernel_id: str) -> str:
 
 def download_output(account: dict, kernel_id: str, dest_dir: Path) -> None:
     dest_dir.mkdir(parents=True, exist_ok=True)
-    run_kaggle(account, ["output", kernel_id, "-p", str(dest_dir), "--force"], timeout=300)
+    file_pattern = r"^mot17_seq_report\.json$"
+    run_kaggle(account, [
+        "output", kernel_id,
+        "-p", str(dest_dir),
+        "--file-pattern", file_pattern,
+        "--page-size", "200",
+        "--force",
+    ], timeout=180)
+    canonical = dest_dir / "mot17_seq_report.json"
+    if not canonical.is_file():
+        candidates = list(dest_dir.glob("**/mot17_seq_report.json"))
+        if candidates:
+            import shutil
+            shutil.copy2(candidates[0], canonical)
 
 
 def poll_cycle(assignments: list[dict], reports_dir: Path) -> tuple[int, int, list[dict]]:

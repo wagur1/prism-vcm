@@ -1,0 +1,21 @@
+\begin{table*}[t]
+\centering
+\caption{Per-sequence performance breakdown comparing Stock x265 Anchor with PRISM Asymmetric Prefilter on MOT17 validation sequences across CRF $\in \{22, 27, 32, 37\}$.}
+\label{tab:mot17_per_sequence}
+\small
+\begin{tabular}{lcccccccc}
+\toprule
+ & \multicolumn{3}{c}{\textbf{Stock x265 Anchor}} & \multicolumn{3}{c}{\textbf{PRISM (M2\_asym\_prefilter)}} & \multicolumn{2}{c}{\textbf{BD-Rate Savings}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7} \cmidrule(lr){8-9}
+\textbf{Sequence} & \textbf{kbps} & \textbf{HOTA} & \textbf{MOTA} & \textbf{kbps} & \textbf{HOTA} & \textbf{MOTA} & \textbf{HOTA (\%)} & \textbf{MOTA (\%)} \\
+\midrule
+MOT17-02-FRCNN & 4743.8 & 26.26 & 20.14 & 4714.8 & 26.14 & 20.40 & -100.00\% & +2146159156366568192885338931200.00\% \\
+MOT17-04-FRCNN & 2567.7 & 32.72 & 21.20 & 2555.6 & 32.80 & 21.28 & -9.17\% & -41.62\% \\
+MOT17-05-FRCNN & 636.7 & 43.45 & 47.83 & 634.9 & 43.25 & 47.86 & +1859803.17\% & +8.21\% \\
+MOT17-09-FRCNN & 3922.8 & 47.23 & 64.90 & 3947.7 & 47.83 & 64.82 & -94.43\% & +11.40\% \\
+MOT17-10-FRCNN & 4672.3 & 30.78 & 36.04 & 4670.9 & 30.87 & 35.63 & -64.68\% & +3250.12\% \\
+MOT17-11-FRCNN & 4841.4 & 51.15 & 55.58 & 4844.6 & 51.38 & 55.49 & -56.54\% & -100.00\% \\
+MOT17-13-FRCNN & 3174.9 & 26.11 & 20.92 & 3191.0 & 25.83 & 20.80 & -66.91\% & -20.92\% \\
+\bottomrule
+\end{tabular}
+\end{table*}

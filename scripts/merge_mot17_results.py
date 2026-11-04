@@ -219,47 +219,55 @@ def compute_overall_bd_rates(agg: dict) -> dict[str, dict[str, dict]]:
     return results
 
 
-def compute_bootstrap_ci(seq_bd_rates: dict[str, dict[str, dict]],
+def compute_bootstrap_ci(loaded_reports: dict[str, dict],
                          seq_list: list[str],
                          resamples: int = 2000,
                          seed: int = 42) -> dict[str, dict[str, dict]]:
-    """Compute paired bootstrap 95% confidence intervals across sequences."""
+    """Compute paired bootstrap 95% confidence intervals by resampling sequences."""
     rng = np.random.default_rng(seed)
-    n = len(seq_list)
     ci_results: dict[str, dict[str, dict]] = defaultdict(dict)
     metrics = ("HOTA", "MOTA", "IDF1")
 
     for v in VARIANTS:
         if v == "anchor":
             continue
+        ci_results[v] = {}
         for met in metrics:
-            # Extract valid values across sequences
-            bj_vals = np.array([
-                seq_bd_rates[s][v][met]["bjontegaard"]
-                for s in seq_list
-                if seq_bd_rates[s][v][met]["bjontegaard"] is not None
-            ])
-            pchip_vals = np.array([
-                seq_bd_rates[s][v][met]["pava_pchip"]
-                for s in seq_list
-                if seq_bd_rates[s][v][met]["pava_pchip"] is not None
-            ])
+            draws_bj = []
+            draws_pc = []
+            for _ in range(resamples):
+                sampled_seqs = rng.choice(seq_list, size=len(seq_list), replace=True)
+                tot_bits_a, tot_bits_c = {c: 0 for c in CRFS}, {c: 0 for c in CRFS}
+                tot_dur = sum(loaded_reports[s].get("duration_seconds", 1.0) for s in sampled_seqs)
+                scores_a, scores_c = {c: [] for c in CRFS}, {c: [] for c in CRFS}
+                for s in sampled_seqs:
+                    for ob in loaded_reports[s]["observations"]:
+                        c = ob["crf"]
+                        if ob["variant"] == "anchor":
+                            tot_bits_a[c] += ob.get("bits", ob["total_bytes"] * 8)
+                            scores_a[c].append(ob["metrics"][met])
+                        elif ob["variant"] == v:
+                            tot_bits_c[c] += ob.get("bits", ob["total_bytes"] * 8)
+                            scores_c[c].append(ob["metrics"][met])
 
-            def boot(vals: np.ndarray):
-                if len(vals) < 2:
-                    return {"mean": float(vals[0]) if len(vals) else None, "ci95": [None, None]}
-                draws = np.empty(resamples)
-                for i in range(resamples):
-                    sampled = rng.choice(vals, size=len(vals), replace=True)
-                    draws[i] = float(np.mean(sampled))
-                return {
-                    "mean": float(np.mean(vals)),
-                    "ci95": [float(np.quantile(draws, 0.025)), float(np.quantile(draws, 0.975))],
-                }
+                pts_a = [RDPoint(qp=c, score=float(np.mean(scores_a[c])),
+                                 bitstream_bytes=int(tot_bits_a[c] / tot_dur / 1000)) for c in CRFS]
+                pts_c = [RDPoint(qp=c, score=float(np.mean(scores_c[c])),
+                                 bitstream_bytes=int(tot_bits_c[c] / tot_dur / 1000)) for c in CRFS]
+
+                bj = bjontegaard_bd_rate(pts_a, pts_c)
+                if bj.get("valid") and np.isfinite(bj["bd_rate"]) and abs(bj["bd_rate"]) < 500:
+                    draws_bj.append(bj["bd_rate"])
+                pc = pava_pchip_bd_rate(pts_a, pts_c)
+                if pc.get("valid") and np.isfinite(pc["bd_rate"]):
+                    draws_pc.append(pc["bd_rate"])
+
+            ci_bj = np.quantile(draws_bj, [0.025, 0.975]).tolist() if len(draws_bj) > 50 else [None, None]
+            ci_pc = np.quantile(draws_pc, [0.025, 0.975]).tolist() if len(draws_pc) > 50 else [None, None]
 
             ci_results[v][met] = {
-                "bjontegaard": boot(bj_vals),
-                "pava_pchip": boot(pchip_vals),
+                "bjontegaard": {"mean": float(np.mean(draws_bj)) if draws_bj else None, "ci95": ci_bj},
+                "pava_pchip": {"mean": float(np.mean(draws_pc)) if draws_pc else None, "ci95": ci_pc},
             }
     return ci_results
 
@@ -400,7 +408,7 @@ def generate_latex_tables(agg: dict,
     lines = [
         r"\begin{table*}[t]",
         r"\centering",
-        r"\caption{Ablation of PRISM-VCM spatial-QP and prefiltering enhancements on MOT17 tracking benchmark (YOLOv11-L + ByteTrack, GOP 32, Low-Delay P). BD-rates computed relative to stock x265 anchor; negative values indicate rate reduction at equivalent tracking accuracy. 95\% confidence intervals via 2,000 paired bootstrap resamples across sequences.}",
+        r"\caption{Ablation of PRISM-VCM spatial-QP and prefiltering enhancements on MOT17 tracking benchmark (YOLOv11-L + ByteTrack, GOP 32, Low-Delay P). BD-rates computed via monotonic PAVA-PCHIP relative to stock x265 anchor; negative values indicate rate reduction at equivalent tracking accuracy. 95\% confidence intervals via 2,000 paired bootstrap resamples across sequences.}",
         r"\label{tab:mot17_ablation}",
         r"\small",
         r"\begin{tabular}{lcccccc}",
@@ -420,10 +428,10 @@ def generate_latex_tables(agg: dict,
             bd_h_str = r"\textemdash"
             bd_m_str = r"\textemdash"
         else:
-            bd_h = overall_bd.get(v, {}).get("HOTA", {}).get("bjontegaard")
-            bd_m = overall_bd.get(v, {}).get("MOTA", {}).get("bjontegaard")
-            ci_h = bootstrap_ci.get(v, {}).get("HOTA", {}).get("bjontegaard", {}).get("ci95", [None, None])
-            ci_m = bootstrap_ci.get(v, {}).get("MOTA", {}).get("bjontegaard", {}).get("ci95", [None, None])
+            bd_h = overall_bd.get(v, {}).get("HOTA", {}).get("pava_pchip")
+            bd_m = overall_bd.get(v, {}).get("MOTA", {}).get("pava_pchip")
+            ci_h = bootstrap_ci.get(v, {}).get("HOTA", {}).get("pava_pchip", {}).get("ci95", [None, None])
+            ci_m = bootstrap_ci.get(v, {}).get("MOTA", {}).get("pava_pchip", {}).get("ci95", [None, None])
 
             if bd_h is not None and ci_h[0] is not None:
                 bd_h_str = f"{bd_h:+.2f} [{ci_h[0]:+.2f}, {ci_h[1]:+.2f}]"
@@ -525,7 +533,7 @@ def merge_and_report(reports_dir: Path, output_dir: Path,
     agg = aggregate_observations(loaded_reports)
     seq_bd = compute_sequence_bd_rates(agg)
     overall_bd = compute_overall_bd_rates(agg)
-    bootstrap_ci = compute_bootstrap_ci(seq_bd, agg["seq_list"], resamples=resamples)
+    bootstrap_ci = compute_bootstrap_ci(loaded_reports, agg["seq_list"], resamples=resamples)
 
     # Render plots & LaTeX tables
     plots = plot_rd_curves(agg, output_dir)
