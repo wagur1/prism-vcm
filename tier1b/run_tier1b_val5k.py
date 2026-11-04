@@ -53,6 +53,49 @@ def observation_keys(image_ids, crfs, models=None):
             for model in use_models for seed in ([None] if model == "M1" else SEEDS)}
 
 
+def load_coco_image(images_dir: Path, row: dict, fallback_cache: Path | None = None):
+    """Load image from disk with retry on FUSE/network errors, falling back to URL download."""
+    import urllib.request
+    from PIL import Image
+
+    primary_path = images_dir / row["file_name"]
+    for attempt in range(5):
+        try:
+            img = Image.open(primary_path)
+            img.load()
+            return img
+        except (FileNotFoundError, OSError, IOError):
+            time.sleep(1.0 * (attempt + 1))
+
+    # Fallback to direct HTTP download if FUSE mount or local disk dropped the file
+    urls = []
+    if "coco_url" in row:
+        urls.append(row["coco_url"])
+    urls.append(f"http://images.cocodataset.org/val2017/{row['file_name']}")
+
+    cache_dir = fallback_cache or Path(tempfile.gettempdir()) / "coco_fallback"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    fallback_file = cache_dir / row["file_name"]
+
+    if not fallback_file.exists():
+        for url in urls:
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    fallback_file.write_bytes(resp.read())
+                if fallback_file.exists() and fallback_file.stat().st_size > 0:
+                    break
+            except Exception:
+                continue
+
+    if fallback_file.exists():
+        img = Image.open(fallback_file)
+        img.load()
+        return img
+
+    raise FileNotFoundError(f"Failed to load {row['file_name']} from {primary_path} and fallback URLs")
+
+
 def validate_observations(observations: list[dict], image_ids, crfs, category_ids, models=None) -> None:
     """Reject missing/duplicate cells and malformed detections before pooling."""
     if models is None:
@@ -262,7 +305,7 @@ def run(args) -> Path:
             if image_path.exists():
                 result = read_json(image_path)
             else:
-                with Image.open(args.images_dir / row["file_name"]) as image:
+                with load_coco_image(args.images_dir, row) as image:
                     if image.size != (row["width"], row["height"]):
                         raise ValueError(f"Source dimensions disagree with COCO: {row['id']}")
                     payload, geometry = letterbox_yuv(np.asarray(image.convert("RGB")))
