@@ -1,11 +1,19 @@
+from dataclasses import asdict
+import hashlib
+import json
 from pathlib import Path
+import sys
+
 import numpy as np
 import pytest
 import torch
 
+from prism.data.splits import SplitEntry, SplitLedger
+from prism.training.calibration import CalibrationCell, CalibrationGate
 from prism.training.gates import require_training_ready
 from prism.training.manifest import EncodeManifest
-from tier1a.common import read_json
+from tier1a.oracle_codec import ClaimConfig
+import tier1a.run_tier1a_step3 as step3
 from tier1a.oracle_candidates import candidates_hash, generate_candidates
 from tier1a.run_tier1a_step3 import (
     build_spatial_oracle_target,
@@ -147,21 +155,278 @@ def test_student_training_and_calibration_fail_closed(tmp_path):
     assert rep["final_train_huber"] < rep["initial_train_huber"]
     assert Path(rep["checkpoint_path"]).is_file()
 
-    # 2. Verify CalibrationGate audit on the real 100 calibration images in oracle_labels.json
-    ledger, _ = build_step3_splits(
-        REPO / "prism/data/splits/coco500_ledger.json",
-        REPO / "prism/data/splits/coco500_selection.json",
-        REPO / "prism/data/splits/coco500_tier1a_splits.json",
-    )
-    cal_ids = [e.sample_id for e in ledger.entries if e.split == "calibration"]
-    oracle_labels = read_json(REPO / "tier1a/oracle/oracle_labels.json")
-    cal_rep = run_calibration_audit(cal_ids, ledger, oracle_labels, device="cpu")
-    assert cal_rep["status"] == "FAIL_CLOSED_DELTA_X_ZERO"
-    assert cal_rep["verified"] is False
-    assert cal_rep["fine_tune_disabled"] is True
-    assert cal_rep["delta_x_forced_zero"] is True
-    assert cal_rep["m3_aliases_m1"] is True
-    assert cal_rep["m4_aliases_m2"] is True
+    # Calibration is covered below with source-bound fake evidence, without training
+    # or writing the tracked split ledger.
+
+
+def calibration_fixture():
+    entries, samples, labels = [], {}, {}
+    config = ClaimConfig()
+    pin = {"library_sha256": "a" * 64, "shim_sha256": "b" * 64,
+           "version": "fake", "abi": 1, "picture_size": 1, "enable_assembly": True}
+    for i in range(100):
+        sid = str(i)
+        source_sha = hashlib.sha256(f"source-{sid}".encode()).hexdigest()
+        entries.append(SplitEntry(sid, source_sha, "calibration"))
+        payload = bytes([i + 16] * 16 + [128] * 8)
+        maps = np.stack([np.full((4, 4), v, np.int8) for v in (0, 3, -3, 1, 2, -2)])
+        frame = {"sample_id": sid, "image_id": i, "source_sha256": source_sha,
+                 "geometry": {"width": 4, "height": 4, "matrix": "bt709", "range": "limited",
+                              "raw_sha256": hashlib.sha256(payload).hexdigest()}}
+        samples[sid] = (frame, payload, maps)
+        labels[sid] = {"sample_id": sid, "image_id": i, "status": "PASS",
+                       "source_sha256": source_sha, "input_yuv_sha256": hashlib.sha256(payload).hexdigest(),
+                       "candidate_count": 6, "candidates_sha256": candidates_hash(maps),
+                       "candidates": [{"index": k, "status": "PASS", "decode_ok": True,
+                           "bits": (i + 16) * 16, "whole_bitstream_bytes": (i + 16) * 2,
+                           "J": .5, "map_sha256": hashlib.sha256(m.tobytes()).hexdigest(),
+                           "encoder_parameters": config.options(Path(f"{sid}-{k}.csv")), "build_pin": pin}
+                           for k, m in enumerate(maps)]}
+    draft = SplitLedger(entries)
+    ledger = SplitLedger(entries, draft.digest)
+    contract = {"encoder": asdict(config), "pin": pin}
+    contract_sha = step3.digest_json(dict(contract, lambda_rate=.05))
+    for sid, row in labels.items():
+        row["binding_sha256"] = step3.digest_json({"candidates": row["candidates_sha256"],
+            "input": row["input_yuv_sha256"], "geometry": samples[sid][0]["geometry"], "contract": contract_sha})
+    return list(labels), ledger, {"contract": contract, "contract_sha256": contract_sha,
+                                 "lambda_R": .05, "labels": labels}, samples
+
+
+class PixelRateProxy:
+    def to(self, device):
+        return self
+
+    def eval(self):
+        return self
+
+    def __call__(self, image, offsets, frame_type, qp):
+        return {"rate": image.flatten(1).sum(1), "reconstruction": image}
+
+
+def test_calibration_uses_corresponding_full_resolution_luma(monkeypatch):
+    ids, ledger, labels, samples = calibration_fixture()
+    monkeypatch.setattr(step3, "ProxyCodec", PixelRateProxy)
+    report = run_calibration_audit(ids[::-1], ledger, labels, device="cpu", sample_loader=samples.__getitem__)
+    assert report["rate_metrics"]["mape"] == pytest.approx(0.0)
+    assert [m["predicted_bits"] for m in report["measurements"]] == [float((i + 16) * 16) for i in range(100)]
+    assert [m["sample_id"] for m in report["measurements"]] == ids
+    assert report["verified"] is False
+    assert "direction_delta_j" in report["unavailable_evidence"]
+    assert report["cell_metrics"]["passed"] is False
+    assert "assess_step1000" not in report
+    assert "m3_aliases_m1" not in report
+    json.dumps(report, allow_nan=False)
+
+
+@pytest.mark.parametrize("bad", ["missing", "swapped", "source", "map", "geometry", "geometry_binding", "codec", "nonfinite"])
+def test_calibration_rejects_missing_or_misaligned_samples(monkeypatch, bad):
+    ids, ledger, labels, samples = calibration_fixture()
+    monkeypatch.setattr(step3, "ProxyCodec", PixelRateProxy)
+    if bad == "missing":
+        samples.pop("0")
+    elif bad == "swapped":
+        samples["0"] = samples["1"]
+    elif bad == "source":
+        samples["0"][0]["source_sha256"] = "c" * 64
+    elif bad == "map":
+        samples["0"][2][0, 0, 0] = 1
+    elif bad == "geometry":
+        samples["0"][0]["geometry"]["width"] = 8
+    elif bad == "geometry_binding":
+        samples["0"][0]["geometry"].update(width=2, height=8)
+    elif bad == "codec":
+        labels["labels"]["0"]["candidates"][0]["encoder_parameters"] = "crf=36"
+    else:
+        labels["labels"]["0"]["candidates"][0]["bits"] = float("nan")
+    report = run_calibration_audit(ids, ledger, labels, device="cpu", sample_loader=samples.__getitem__)
+    assert report["verified"] is False
+    assert report["rate_metrics"]["passed"] is False
+    assert report["sample_failures"]
+    json.dumps(report, allow_nan=False)
+
+
+def test_calibration_without_images_is_explicitly_unavailable():
+    ids, ledger, labels, _ = calibration_fixture()
+    report = run_calibration_audit(ids, ledger, labels, device="cpu")
+    assert report["verified"] is False
+    assert report["measurements"] == []
+    assert "sample_inputs" in report["unavailable_evidence"]
+    assert report["consecutive_failures"] == 1
+
+
+def verified_gate():
+    gate = CalibrationGate({(20, "I")})
+    values = np.arange(1., 101.)
+    cell = CalibrationCell(20, "I", values, values, values, values, np.full(100, -.2), True, True, True, True)
+    gate.assess(0, [cell], lambda: None)
+    return gate
+
+
+@pytest.mark.parametrize("policy", [None, {}, "PASS", "failed", "expired", "wrong_cell", "valid"])
+def test_encoder_payload_boundary_fails_closed_or_preserves_verified_residual(policy):
+    gate = verified_gate() if isinstance(policy, str) and policy in {"failed", "expired", "wrong_cell", "valid"} else policy
+    step, crf = 0, 20
+    if policy == "failed":
+        gate.verified = False
+    elif policy == "expired":
+        step = 1000
+    elif policy == "wrong_cell":
+        crf = 24
+    payload = bytes([80] * 16 + [128] * 8)
+    result, report = step3.prepare_residual_payload(payload, np.full((4, 4), 2.), 4, 4,
+                                                  calibration_gate=gate, step=step, crf=crf)
+    assert result == (bytes([82] * 16 + [128] * 8) if policy == "valid" else payload)
+    assert report["residual_enabled"] is (policy == "valid")
+    assert report["payload_changed"] is (policy == "valid")
+    assert report["reason"]
+
+
+@pytest.mark.parametrize("bad", ["tampered", None, [], "invalid"])
+def test_calibration_rejects_unbound_or_malformed_contract(monkeypatch, bad):
+    ids, ledger, labels, samples = calibration_fixture()
+    monkeypatch.setattr(step3, "ProxyCodec", PixelRateProxy)
+    if bad == "tampered":
+        labels["contract"]["encoder"]["crf"] = 36.0
+        config = ClaimConfig(**labels["contract"]["encoder"])
+        for row in labels["labels"].values():
+            row["candidates"][0]["encoder_parameters"] = config.options(Path("changed.csv"))
+    else:
+        labels["contract"] = bad
+    report = run_calibration_audit(ids, ledger, labels, device="cpu", sample_loader=samples.__getitem__)
+    assert report["verified"] is False
+    assert report["rate_metrics"]["passed"] is False
+    assert report["measurements"] == []
+    assert "codec_configuration" in report["unavailable_evidence"]
+
+
+@pytest.mark.parametrize("field", ["semantic_passed", "same_codec_state", "feasible_plus_minus_one", "dependent_frames_measured"])
+@pytest.mark.parametrize("value", [float("nan"), "true", 1, None])
+def test_invalid_gate_flag_cannot_authorize_encoder_payload(field, value):
+    from dataclasses import replace
+
+    values = np.arange(1., 101.)
+    cell = CalibrationCell(20, "I", values, values, values, values, np.full(100, -.2), True, True, True, True)
+    gate = CalibrationGate({(20, "I")})
+    gate.assess(0, [replace(cell, **{field: value})], lambda: None)
+    payload = bytes([80] * 16 + [128] * 8)
+    result, report = step3.prepare_residual_payload(payload, np.full((4, 4), 2.), 4, 4, calibration_gate=gate)
+    assert result == payload
+    assert report["residual_enabled"] is False
+
+
+@pytest.mark.parametrize("raw", [np.full((4, 4), np.nan), np.ones((2, 2)), np.full((4, 4), "bad")])
+def test_invalid_residual_is_zero_at_encoder_payload_boundary(raw):
+    payload = bytes([80] * 16 + [128] * 8)
+    result, report = step3.prepare_residual_payload(payload, raw, 4, 4, calibration_gate=verified_gate(), crf=20)
+    assert result == payload
+    assert report["residual_enabled"] is False
+
+
+@pytest.mark.parametrize("gate_passes", [False, True])
+def test_main_enforces_calibration_at_actual_encoder_boundary(tmp_path, monkeypatch, gate_passes):
+    ids, ledger, labels, samples = calibration_fixture()
+    extra = [SplitEntry(sid, hashlib.sha256(sid.encode()).hexdigest(), split)
+             for sid, split in (("100", "train"), ("101", "dev"), ("102", "pilot"))]
+    draft = SplitLedger(list(ledger.entries) + extra)
+    ledger = SplitLedger(list(draft.entries), draft.digest)
+    frame, payload, maps = samples["0"]
+    payload = bytes([80] * 16 + [128] * 8)
+    for entry in extra:
+        samples[entry.sample_id] = (dict(frame, sample_id=entry.sample_id, image_id=int(entry.sample_id)), payload, maps)
+        labels["labels"][entry.sample_id] = labels["labels"]["0"]
+    rows = [{"sample_id": e.sample_id, "image_id": int(e.sample_id)} for e in ledger.entries]
+    captured, calls, h1_evidence = {}, [], []
+    original_h1_pass = step3.h1_pass
+
+    def record_h1(comparisons, **kwargs):
+        h1_evidence.append(comparisons)
+        return original_h1_pass(comparisons, **kwargs)
+
+    monkeypatch.setattr(step3, "h1_pass", record_h1)
+
+    class Encoder:
+        pin = stock_pin = labels["contract"]["pin"]
+        stack = {"enable_assembly": True}
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __call__(self, data, offsets, frame, directory, *, stock=False, crf=20.):
+            calls.append((data, None if offsets is None else offsets.copy(), stock, crf))
+            size = int(1000 - crf * 10 - (20 if offsets is not None else 0))
+            return {"bits": size * 8, "whole_bitstream_bytes": size, "encode_seconds": .01,
+                    "bitstream_sha256": hashlib.sha256(data + str(stock).encode()).hexdigest()}
+
+        def decode(self, result, frame):
+            score_level = 20 + (result["whole_bitstream_bytes"] - 620) // 40
+            return np.full((4, 4, 3), score_level, np.uint8)
+
+    class Scorer:
+        coco = None
+        provenance = {}
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def score_both(self, rgb, frame):
+            return {k: {"ap50": float(rgb[0, 0, 0]) / 100, "rows": [{"score": float(rgb[0, 0, 0]) / 100}]}
+                    for k in ("yolo11l", "faster_rcnn")}
+
+    import tier1a.step3_detectors as detectors
+    monkeypatch.setattr(detectors, "DualDetectorScorer", Scorer)
+    monkeypatch.setattr(detectors, "evaluate_pooled_coco_metrics", lambda coco, ids, rows: {
+        "ap50": float(np.mean([r["score"] for r in rows])),
+        "ap_50_95": float(np.mean([r["score"] for r in rows])) - .01, "ap_small": .3})
+    monkeypatch.setattr(step3, "ensure_stack", lambda *args, **kwargs: {})
+    monkeypatch.setattr(step3, "load_inputs", lambda *args: (ledger, rows, "selection"))
+    monkeypatch.setattr(step3, "build_step3_splits", lambda *args: (ledger, {"counts_by_split": {}}))
+    monkeypatch.setattr(step3, "load_frame", lambda root, row, *args, **kwargs: samples[row["sample_id"]])
+    monkeypatch.setattr(step3, "extract_known_mask", lambda *args: np.ones((4, 4), bool))
+    monkeypatch.setattr(step3, "build_spatial_oracle_target", lambda *args: {"winner_index": 0, "target_qg": maps[0].astype(np.float32), "known_mask": np.ones((4, 4), bool)})
+    monkeypatch.setattr(step3, "train_student_seed", lambda *args, **kwargs: (object(), {}))
+    monkeypatch.setattr(step3, "Gate0Encoder", Encoder)
+    monkeypatch.setattr(step3, "run_asm_smoke_suite", lambda *args: {"status": "PASS", "physical_encodes": 0})
+    monkeypatch.setattr(step3, "read_json", lambda path: labels)
+    monkeypatch.setattr(step3, "write_json", lambda path, value: captured.update({path.name: value}))
+    monkeypatch.setattr(step3, "SEEDS", (0,))
+    monkeypatch.setattr(step3, "infer_student_qp_map", lambda *args, **kwargs: np.ones((4, 4), np.int8))
+    monkeypatch.setattr(step3, "infer_student_residual", lambda *args, **kwargs: np.full((4, 4), 2.))
+    monkeypatch.setattr(step3, "paired_bd_bootstrap", lambda *args, **kwargs: {"valid": False, "ci95": None})
+
+    def audit(*args, **kwargs):
+        gate = kwargs.get("calibration_gate")
+        if gate_passes and gate is not None:
+            values = np.arange(1., 101.)
+            cells = [CalibrationCell(q, "I", values, values, values, values, np.full(100, -.2), True, True, True, True)
+                     for q in step3.CRF_GRID]
+            gate.assess(0, cells, lambda: None)
+        return {"verified": gate_passes, "status": "PASS" if gate_passes else "UNAVAILABLE"}
+
+    monkeypatch.setattr(step3, "run_calibration_audit", audit)
+    monkeypatch.setattr(sys, "argv", ["step3", "--annotations", str(tmp_path / "annotations"), "--weights", str(tmp_path / "weights"),
+                        "--output", str(tmp_path / "out"), "--scratch-dir", str(tmp_path / "scratch"),
+                        "--working", str(tmp_path), "--eval-split", "pilot", "--no-build"])
+    assert step3.main() == 0
+    assert len(calls) == (20 if gate_passes else 10)
+    for crf in step3.CRF_GRID:
+        at_qp = [c for c in calls if c[3] == crf]
+        assert at_qp[0][0] == at_qp[1][0] == payload
+        assert at_qp[0][1] is None and at_qp[0][2] is True
+        np.testing.assert_array_equal(at_qp[1][1], np.ones((4, 4), np.int8))
+        assert at_qp[1][2] is False
+        if gate_passes:
+            assert at_qp[2][0] == at_qp[3][0] == bytes([82] * 16 + [128] * 8)
+            assert at_qp[2][1] is None and at_qp[2][2] is True
+            np.testing.assert_array_equal(at_qp[3][1], at_qp[1][1])
+            assert at_qp[3][2] is False
+    effective = captured["step3_report.json"]["residual_evaluation"]
+    assert effective["enabled_requests"] == (5 if gate_passes else 0)
+    assert effective["disabled_requests"] == (0 if gate_passes else 5)
+    assert effective["m3_aliases_m1"] is (not gate_passes)
+    assert effective["m4_aliases_m2"] is (not gate_passes)
+    if gate_passes:
+        assert all(e["M4-vs-M2"]["ci95"] is None for e in h1_evidence)
 
 
 def test_asm_smoke_suite_and_manifest_accounting(tmp_path):

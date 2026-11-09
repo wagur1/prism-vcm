@@ -25,6 +25,7 @@ the baseline; adaptive/pre-filter ablations run in scripts/screen_m2_enhancement
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable
 from dataclasses import asdict
 import hashlib
 import json
@@ -43,6 +44,7 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 
+from prism.codec.ffmpeg_stream import frame_bytes
 from prism.codec.x265_bridge import qg_shape
 # Re-export legacy helpers here for existing Step 3/Tier 1b consumers.
 from prism.codec.qp_maps import project_adaptive_qp_map, project_zero_mean_qp_map, qg_area_weights
@@ -52,7 +54,7 @@ from prism.evaluation.evaluator import evaluate, h1_pass, secondary_h2, transfer
 from prism.evaluation.metrics import RDPoint, bd_rate, holm_bonferroni
 from prism.models.proxy_codec import ProxyCodec
 from prism.models.student import MobileNetV4HybridController, upsample_qp_map
-from prism.training.calibration import CalibrationCell, CalibrationGate, check_cell
+from prism.training.calibration import CalibrationGate
 from prism.training.gates import require_training_ready
 from prism.training.manifest import EncodeManifest
 from tier1a.common import check_storage, exclusive, read_json, sha256, write_json
@@ -220,6 +222,39 @@ def apply_residual_to_yuv(payload: bytes, residual: np.ndarray, width: int, heig
     return luma_prime.tobytes() + payload[n:]
 
 
+def prepare_residual_payload(
+    payload: bytes,
+    residual: np.ndarray,
+    width: int,
+    height: int,
+    *,
+    calibration_gate: CalibrationGate | None = None,
+    step: int = 0,
+    crf: float = 20.0,
+) -> tuple[bytes, dict]:
+    """Fail closed at the encoder-input boundary, not merely in the audit report."""
+    reason = "missing or invalid calibration gate"
+    enabled = False
+    if isinstance(calibration_gate, CalibrationGate):
+        if (crf, "I") not in calibration_gate.expected_cells:
+            reason = "operating point has no required calibration cell"
+        elif not calibration_gate.allow_delta_x(step):
+            reason = "calibration unverified, failed, disabled, or expired"
+        else:
+            enabled = True
+            reason = "required calibration verified"
+    raw = np.asarray(residual)
+    if (raw.shape != (height, width) or raw.dtype.kind not in "fiu"
+            or not np.isfinite(raw).all()):
+        enabled = False
+        reason = "invalid residual shape or nonfinite prediction"
+    # Reuse the gate's exact-zero policy; never multiply a NaN residual by zero.
+    filtered = (calibration_gate.apply_delta_x(raw, step) if enabled else np.zeros((height, width), dtype=np.float32))
+    result = apply_residual_to_yuv(payload, filtered, width, height) if np.any(filtered) else payload
+    return result, {"residual_enabled": enabled, "reason": reason,
+                    "payload_changed": result != payload}
+
+
 def train_student_seed(
     seed: int,
     train_samples: list[dict],
@@ -356,93 +391,131 @@ def run_calibration_audit(
     oracle_labels: dict,
     *,
     device: str,
+    sample_loader: Callable[[str], tuple[dict, bytes, np.ndarray]] | None = None,
+    calibration_gate: CalibrationGate | None = None,
 ) -> dict:
-    """Execute honest CalibrationGate check on the 100 calibration images against real Step 2 x265 data."""
-    if len(calibration_ids) < 100:
-        raise ValueError("CalibrationGate requires >= 100 calibration images")
-    proxy = ProxyCodec().to(device)
-    proxy.eval()
+    """Audit source-bound baseline rates; unavailable required evidence cannot pass.
 
-    actual_bits = []
-    predicted_bits = []
-    actual_delta_j = []
-    predicted_delta_j = []
-    direction_delta_j = []
-
-    for sid in sorted(calibration_ids, key=int):
-        ledger.require(sid, "calibration")
-        row = oracle_labels["labels"][sid]
-        if row["status"] != "PASS":
-            raise ValueError(f"Calibration sample {sid} did not PASS Step 2")
-        c0 = row["candidates"][0]  # zero
-        c1 = row["candidates"][1]  # +3_unif
-        actual_bits.append(float(c0["bits"]))
-
-        # ProxyCodec rate estimate on 1080p frame (64x64 scaled by (1920*1080)/(64*64))
-        with torch.no_grad():
-            dummy_x = torch.full((1, 1, 64, 64), 0.5, device=device)
-            dqp_map0 = torch.zeros((1, 1, 17, 30), device=device)
-            dqp_map1 = torch.full((1, 1, 17, 30), 3.0, device=device)
-            frame_type = torch.tensor([1], dtype=torch.long, device=device)  # "I" = 1
-            base_qp = torch.tensor([20.0], dtype=torch.float32, device=device)
-            out0 = proxy(dummy_x, dqp_map0, frame_type, base_qp)
-            out1 = proxy(dummy_x, dqp_map1, frame_type, base_qp)
-            scale_px = (1920.0 * 1080.0) / (64.0 * 64.0)
-            pred_b0 = float(out0["rate"].item() * scale_px)
-            pred_b1 = float(out1["rate"].item() * scale_px)
-            predicted_bits.append(pred_b0)
-
-        # Cost C = -J (to be minimized, per Council CX-2/CX-3 sign convention)
-        c0_cost = -float(c0["J"])
-        c1_cost = -float(c1["J"])
-        actual_delta_j.append(c1_cost - c0_cost)
-        predicted_delta_j.append(pred_b1 - pred_b0)
-        # Under pre-codec semantic loss + detached ProxyCodec reconstruction,
-        # zero residual update yields direction_delta_j = 0.0 (fails upper CI < 0)
-        direction_delta_j.append(0.0)
-
-    cell = CalibrationCell(
-        qp=20,
-        frame_type="I",
-        actual_bits=np.asarray(actual_bits, dtype=np.float64),
-        predicted_bits=np.asarray(predicted_bits, dtype=np.float64),
-        actual_delta_j=np.asarray(actual_delta_j, dtype=np.float64),
-        predicted_delta_j=np.asarray(predicted_delta_j, dtype=np.float64),
-        direction_delta_j=np.asarray(direction_delta_j, dtype=np.float64),
-        semantic_passed=True,
-        same_codec_state=True,
-        feasible_plus_minus_one=True,
-        dependent_frames_measured=True,
-        split="calibration",
-    )
-    restored = {"count": 0}
-    gate = CalibrationGate(expected_cells={(20, "I")})
-    assess_0 = gate.assess(0, [cell], restore_supervised=lambda: restored.__setitem__("count", restored["count"] + 1))
-    assess_1000 = gate.assess(1000, [cell], restore_supervised=lambda: restored.__setitem__("count", restored["count"] + 1))
-    test_tensor = torch.ones((1, 1, 8, 8), device=device)
-    filtered = gate.apply_delta_x(test_tensor, step=1000)
-    if float(filtered.abs().max().item()) != 0.0:
-        raise RuntimeError("CalibrationGate failed to zero out delta_x after gate failure")
-
+    Step 2 labels contain zero/+3 QP observations, not the required feasible
+    +/-1 objective probes or a measured learned-residual update. Rate differences
+    must not masquerade as proxy semantic/objective differences.
+    """
+    gate = calibration_gate if calibration_gate is not None else CalibrationGate({(20, "I")})
+    measurements, failures = [], []
+    unavailable = {
+        "actual_delta_j": "required feasible +/-1 QP objective probes are not present in Step 2 labels",
+        "predicted_delta_j": "matching proxy semantic/objective measurements are unavailable",
+        "direction_delta_j": "real-codec learned-residual update was not measured",
+        "semantic_passed": "independent semantic calibration was not measured",
+        "feasible_plus_minus_one": "Step 2 uniform +/-3 proposals do not establish +/-1 feasibility",
+        "dependent_frames_measured": "no learned-residual direction/dependent-frame observations",
+    }
+    contract = oracle_labels.get("contract", {})
+    config = None
+    try:
+        from tier1a.oracle_codec import ClaimConfig
+        if not isinstance(contract, dict):
+            raise ValueError("missing or invalid calibration contract")
+        lambda_rate = oracle_labels.get("lambda_R")
+        if (isinstance(lambda_rate, bool) or not isinstance(lambda_rate, (int, float))
+                or not math.isfinite(lambda_rate) or lambda_rate < 0):
+            raise ValueError("missing or invalid measured rate coefficient")
+        if digest_json(dict(contract, lambda_rate=lambda_rate)) != oracle_labels.get("contract_sha256"):
+            raise ValueError("measured calibration contract digest mismatch")
+        config_data = contract.get("encoder")
+        if not isinstance(config_data, dict):
+            raise ValueError("missing measured encoder configuration")
+        config = ClaimConfig(**config_data)
+        if config.rc_mode != "CRF" or config.gop != 1 or config.bframes != 0:
+            raise ValueError("require matching intra CRF calibration configuration")
+        expected_options = dict(line.split("=", 1) for line in config.options(Path("calibration.csv")).splitlines() if line)
+        expected_options.pop("csv", None)
+    except (TypeError, ValueError) as exc:
+        unavailable["codec_configuration"] = str(exc)
+        config = None
+    if sample_loader is None:
+        unavailable["sample_inputs"] = "actual source-bound calibration YUV samples were not supplied"
+    elif config is not None:
+        proxy = ProxyCodec().to(device)
+        proxy.eval()
+        seen = set()
+        for sid in sorted(calibration_ids, key=int):
+            try:
+                if sid in seen:
+                    raise ValueError("duplicate calibration sample")
+                seen.add(sid)
+                entry = ledger.require(sid, "calibration")
+                row = oracle_labels["labels"][sid]
+                frame, payload, maps = sample_loader(sid)
+                geometry = frame["geometry"]
+                width, height = geometry["width"], geometry["height"]
+                input_sha = hashlib.sha256(payload).hexdigest()
+                if (str(frame["sample_id"]) != sid or str(row["sample_id"]) != sid
+                        or frame["image_id"] != row["image_id"]
+                        or frame["source_sha256"] != entry.sha256 or row["source_sha256"] != entry.sha256
+                        or row["input_yuv_sha256"] != input_sha or geometry["raw_sha256"] != input_sha
+                        or len(payload) != frame_bytes(width, height)
+                        or geometry["matrix"] != "bt709" or geometry["range"] != "limited"):
+                    raise ValueError("calibration input identity, source, payload, or geometry mismatch")
+                binding = digest_json({"candidates": row["candidates_sha256"], "input": input_sha,
+                                       "geometry": geometry, "contract": oracle_labels["contract_sha256"]})
+                if binding != row["binding_sha256"]:
+                    raise ValueError("measured calibration geometry/input/contract binding mismatch")
+                count = row["candidate_count"]
+                active_maps = maps[:count]
+                if (active_maps.shape[1:] != qg_shape(width, height)
+                        or candidates_hash(active_maps) != row["candidates_sha256"]):
+                    raise ValueError("calibration candidate-map binding mismatch")
+                candidates = [c for c in row["candidates"] if c["index"] == 0]
+                if len(candidates) != 1:
+                    raise ValueError("require one measured zero-map candidate")
+                c0 = candidates[0]
+                options = dict(line.split("=", 1) for line in c0["encoder_parameters"].splitlines() if line)
+                options.pop("csv", None)
+                if (options != expected_options or not contract.get("pin")
+                        or c0["build_pin"] != contract["pin"]
+                        or hashlib.sha256(active_maps[0].tobytes()).hexdigest() != c0["map_sha256"]
+                        or np.any(active_maps[0])):
+                    raise ValueError("measured zero-map codec configuration or map mismatch")
+                actual = float(c0["bits"])
+                if (row["status"] != "PASS" or c0["status"] != "PASS" or c0["decode_ok"] is not True
+                        or not math.isfinite(actual) or actual <= 0
+                        or c0["whole_bitstream_bytes"] * 8 != actual):
+                    raise ValueError("invalid measured baseline bits/decode")
+                # Raw luma in 8-bit pixel units, at the exact measured geometry.
+                # ProxyCodec rates are already total bits; no dummy/area scaling.
+                luma = np.frombuffer(payload, dtype=np.uint8, count=width * height).copy().reshape(height, width)
+                image = torch.from_numpy(luma).to(device=device, dtype=torch.float32)[None, None]
+                offsets = torch.from_numpy(active_maps[0].copy()).to(device=device, dtype=torch.float32)[None, None]
+                with torch.no_grad():
+                    output = proxy(image, offsets, torch.tensor([1], device=device),
+                                   torch.tensor([config.crf], dtype=torch.float32, device=device))
+                predicted = float(output["rate"].item())
+                if not math.isfinite(predicted) or predicted <= 0:
+                    raise ValueError("nonfinite or nonpositive proxy bits")
+                measurements.append({"sample_id": sid, "input_yuv_sha256": input_sha,
+                    "width": width, "height": height, "crf": config.crf,
+                    "actual_bits": actual, "predicted_bits": predicted})
+            except (KeyError, OSError, RuntimeError, TypeError, ValueError) as exc:
+                failures.append({"sample_id": sid, "reason": f"{type(exc).__name__}: {exc}"})
+    complete = len(measurements) == len(calibration_ids) and len(measurements) >= 100 and not failures
+    mape = (float(np.mean([abs(m["predicted_bits"] - m["actual_bits"]) / m["actual_bits"]
+                           for m in measurements])) if measurements else None)
+    rate_metrics = {"n": len(measurements), "mape": mape,
+                    "passed": bool(complete and mape is not None and mape <= .05)}
+    # One real audit only. Do not replay identical observations as step 1000,
+    # claim checkpoint restoration, or claim encoder aliases from this report.
+    assessment = gate.assess(0, [], restore_supervised=lambda: None)
     return {
-        "status": "FAIL_CLOSED_DELTA_X_ZERO",
-        "calibration_samples": len(calibration_ids),
-        "cell": {"qp": 20, "frame_type": "I"},
-        "cell_metrics": check_cell(cell),
-        "assess_step0": assess_0,
-        "assess_step1000": assess_1000,
-        "restore_supervised_calls": restored["count"],
-        "verified": gate.verified,
-        "consecutive_failures": gate.consecutive_failures,
-        "fine_tune_disabled": gate.fine_tune_disabled,
-        "delta_x_forced_zero": True,
-        "m3_aliases_m1": True,
-        "m4_aliases_m2": True,
-        "architectural_root_causes": [
-            "ProxyCodec.forward detaches feature before reconstruction conv (zero post-codec gradient to residual_head)",
-            "Single-layer Dirac proxy rate estimator fails <=5% MAPE against x265 entropy coding",
-            "Pre-codec semantic loss 1 - cos(Phi(x + dx), Phi(x)) attains global minimum at dx = 0",
-        ],
+        "status": "FAIL_CLOSED_UNAVAILABLE_EVIDENCE", "calibration_samples": len(calibration_ids),
+        "cell": {"qp": config.crf if config is not None else None, "frame_type": "I"},
+        "rate_metrics": rate_metrics, "measurements": measurements, "sample_failures": failures,
+        "unavailable_evidence": unavailable,
+        "cell_metrics": {"passed": False, "reason": "required paired directional/semantic evidence unavailable"},
+        "assess_step0": assessment, "verified": gate.verified,
+        "consecutive_failures": gate.consecutive_failures, "fine_tune_disabled": gate.fine_tune_disabled,
+        "residual_policy": "disabled: required calibration evidence unavailable",
+        "restore_supervised_calls": 0,
     }
 
 
@@ -667,9 +740,16 @@ def main() -> int:
             models[seed] = model
             seed_training_reports[str(seed)] = s_rep
 
-        # 4. Run CalibrationGate Audit on the 100 calibration images
+        # 4. Run one independent audit with the same authenticated YUV loader.
+        calibration_gate = CalibrationGate({(crf, "I") for crf in CRF_GRID})
+
+        def calibration_sample(sid: str) -> tuple[dict, bytes, np.ndarray]:
+            return load_frame(args.input, row_by_sid[sid], parent_ledger, selection_sha,
+                include_fusion=oracle_labels["labels"][sid].get("candidate_count", 8) == 9)
+
         calibration_report = run_calibration_audit(
-            cal_ids, step3_ledger, oracle_labels, device=device
+            cal_ids, step3_ledger, oracle_labels, device=device,
+            sample_loader=calibration_sample, calibration_gate=calibration_gate,
         )
 
         # 5. Evaluate M1, M2, M3, M4 on the 50 held-out pilot images across CRF {20, 24, 28, 32, 36}
@@ -687,6 +767,9 @@ def main() -> int:
         physical_encodes = 0
         logical_requests = 0
         cache_hits = 0
+        residual_evaluation = {"enabled_requests": 0, "disabled_requests": 0,
+                               "changed_payload_requests": 0, "reasons": {},
+                               "m3_aliases_m1": True, "m4_aliases_m2": True}
 
         # Data structures for curves and bootstrap
         # m1_obs[sid][crf] -> {"bytes": int, "yolo_ap50": float, "frcnn_ap50": float, "yolo_rows": list, "frcnn_rows": list}
@@ -741,7 +824,19 @@ def main() -> int:
                     qmap_sha = hashlib.sha256(qmap.tobytes()).hexdigest()
                     residual = infer_student_residual(models[seed], x_low, float(crf), device=device,
                                                       width=frame["geometry"]["width"], height=frame["geometry"]["height"])
-                    res_nonzero = bool(np.any(residual != 0.0))
+                    pre_payload, residual_status = prepare_residual_payload(
+                        payload, residual, frame["geometry"]["width"], frame["geometry"]["height"],
+                        calibration_gate=calibration_gate, step=0, crf=float(crf),
+                    )
+                    key = "enabled_requests" if residual_status["residual_enabled"] else "disabled_requests"
+                    residual_evaluation[key] += 1
+                    reason = residual_status["reason"]
+                    residual_evaluation["reasons"][reason] = residual_evaluation["reasons"].get(reason, 0) + 1
+                    res_nonzero = residual_status["payload_changed"]
+                    if res_nonzero:
+                        residual_evaluation["changed_payload_requests"] += 1
+                        residual_evaluation["m3_aliases_m1"] = False
+                        residual_evaluation["m4_aliases_m2"] = False
 
                     # --- M2 (Spatial QP-only, raw payload) ---
                     if not np.any(qmap):
@@ -785,7 +880,6 @@ def main() -> int:
                         m3_obs[seed][sid][crf] = m1_obs[sid][crf]
                         m4_obs[seed][sid][crf] = m2_obs[seed][sid][crf]
                     else:
-                        pre_payload = apply_residual_to_yuv(payload, residual, frame["geometry"]["width"], frame["geometry"]["height"])
                         pre_sha = hashlib.sha256(pre_payload).hexdigest()
                         res_sha = hashlib.sha256(residual.tobytes()).hexdigest()
 
@@ -984,12 +1078,23 @@ def main() -> int:
             }
             boot_m4_vs_m1 = paired_bd_bootstrap(boot_data_m4_vs_m1, unit="image", resamples=2000, random_seed=0)
 
-            # Paired p-values across 5 CRFs (M4-vs-M2 = 1.0 under fail-closed; M4-vs-M3 = M2-vs-M1)
+            # Preserve alias simplifications only when the encoder-input paths
+            # actually alias. Otherwise use paired observations, not forced p=1.
             anchor_ap = {sid: {crf: m1_obs[sid][crf][det_key]["ap50"] for crf in CRF_GRID} for sid in pilot_ids}
             cand_ap = {seed: {sid: {crf: m2_obs[seed][sid][crf][det_key]["ap50"] for crf in CRF_GRID} for sid in pilot_ids} for seed in SEEDS}
             p_m2_vs_m1 = compute_paired_p_values(anchor_ap, cand_ap, pilot_ids)
-            # 10-test Holm family: 5 CRFs (M4-vs-M2, all p=1.0 due to fail-closed Delta-x=0) + 5 CRFs (M4-vs-M3 == M2-vs-M1)
-            p_family_10 = [1.0] * 5 + p_m2_vs_m1
+            aliases = residual_evaluation["m3_aliases_m1"] and residual_evaluation["m4_aliases_m2"]
+            if aliases:
+                p_family_10 = [1.0] * 5 + p_m2_vs_m1
+            else:
+                m4_ap = {seed: {sid: {crf: m4_obs[seed][sid][crf][det_key]["ap50"] for crf in CRF_GRID}
+                               for sid in pilot_ids} for seed in SEEDS}
+                p_family_10 = []
+                for observations in (m2_obs, m3_obs):
+                    paired_anchor = {sid: {q: float(np.mean([
+                        observations[seed][sid][q][det_key]["ap50"] for seed in SEEDS]))
+                        for q in CRF_GRID} for sid in pilot_ids}
+                    p_family_10.extend(compute_paired_p_values(paired_anchor, m4_ap, pilot_ids))
 
             eval_per_img = evaluate({
                 "rc_mode": "CRF",
@@ -1038,8 +1143,8 @@ def main() -> int:
             )
             h1_passed = h1_pass(
                 {
-                    "M4-vs-M2": {**eval_pooled["M4-vs-M2"], "ci95": [0.0, 0.0]},
-                    "M4-vs-M3": {**eval_pooled["M4-vs-M3"], "ci95": boot_m2_vs_m1.get("ci95")},
+                    "M4-vs-M2": {**eval_pooled["M4-vs-M2"], "ci95": [0.0, 0.0] if aliases else None},
+                    "M4-vs-M3": {**eval_pooled["M4-vs-M3"], "ci95": boot_m2_vs_m1.get("ci95") if aliases else None},
                 },
                 independent_seeds=list(SEEDS),
                 resamples=2000,
@@ -1108,6 +1213,7 @@ def main() -> int:
             "asm_smoke_suite": asm_smoke,
             "student_training": seed_training_reports,
             "calibration_gate_audit": calibration_report,
+            "residual_evaluation": residual_evaluation,
             "encode_accounting": {
                 "logical_eval_requests": logical_requests,
                 "physical_eval_encodes": physical_encodes,

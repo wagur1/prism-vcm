@@ -86,6 +86,26 @@ def test_tier1b_artifacts_and_known_bd_reduction(tmp_path):
     assert "20.00 / 20.00" in table  # Reductions have the opposite sign to BD-rate.
 
 
+@pytest.mark.parametrize("case, disclosed", [("disabled", True), ("enabled", False),
+                                              ("empty", False), ("legacy", True)])
+def test_tables_disclose_effective_residual_policy(tmp_path, case, disclosed):
+    report = final_report()
+    report["calibration_gate_audit"] = {"delta_x_forced_zero": True}
+    if case != "legacy":
+        report["residual_evaluation"] = {
+            "enabled_requests": 1 if case == "enabled" else 0,
+            "disabled_requests": 0 if case == "empty" else 5,
+            "changed_payload_requests": 1 if case == "enabled" else 0,
+            "m3_aliases_m1": case != "enabled", "m4_aliases_m2": case != "enabled",
+        }
+        if case == "disabled":
+            report["calibration_gate_audit"] = {"verified": False}
+    curves = paper.normalize_report(report)
+    paper.write_tables(paper.mean_curves(curves), paper.compute_bd_rates(curves, report), report, tmp_path)
+    for filename in ("table_m1_m4_coco.tex", "table_cross_detector.tex"):
+        assert (r"\Delta_x=0" in (tmp_path / filename).read_text()) is disclosed
+
+
 def test_seed_averaging_and_undefined_metrics():
     report = final_report()
     report["results"]["metrics"]["yolo11l"]["M2_seed0_crf20"]["ap_small"] = -1
