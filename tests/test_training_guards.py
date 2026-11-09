@@ -49,6 +49,17 @@ def test_calibration_insufficient_samples_and_missing_cells_fail():
     assert not gate.assess(0, [original], lambda: None)["passed"]
 
 
+@pytest.mark.parametrize("missing", ["direction_delta_j", "semantic_passed", "same_codec_state",
+                                     "feasible_plus_minus_one", "dependent_frames_measured"])
+def test_required_calibration_evidence_cannot_enable_residual(missing):
+    data = dict(cell().__dict__)
+    data[missing] = np.full(100, np.nan) if missing == "direction_delta_j" else False
+    gate = CalibrationGate({(32, "P")})
+    assert not gate.assess(0, [CalibrationCell(**data)], lambda: None)["verified"]
+    filtered = gate.apply_delta_x(np.full((2, 2), np.nan), 0)
+    np.testing.assert_array_equal(filtered, np.zeros((2, 2)))
+
+
 def test_oracle_train_only_refresh_and_encode_manifest(tmp_path):
     manifest = EncodeManifest(tmp_path / "encodes.jsonl", repo_sha="test", config_sha="test", build={}, seed=1)
     sweep = OracleSweep(OracleConfig("locked-D", .01, 1000), ledger(), manifest)

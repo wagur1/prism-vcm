@@ -44,8 +44,10 @@ def check_cell(cell: CalibrationCell) -> dict:
     z = np.arctanh(np.clip(rho, -1 + 1e-12, 1 - 1e-12))
     interval = np.tanh(z + np.array([-1, 1]) * norm.ppf(0.975) / np.sqrt(n - 3))
     upper = float(np.mean(direction) + t.ppf(0.975, n - 1) * np.std(direction, ddof=1) / np.sqrt(n))
-    passed = (mape <= 0.05 and rho >= 0.8 and upper < 0 and cell.semantic_passed and
-              cell.same_codec_state and cell.feasible_plus_minus_one and cell.dependent_frames_measured)
+    flags = (cell.semantic_passed, cell.same_codec_state,
+             cell.feasible_plus_minus_one, cell.dependent_frames_measured)
+    evidence_passed = all(isinstance(value, (bool, np.bool_)) and bool(value) for value in flags)
+    passed = mape <= 0.05 and rho >= 0.8 and upper < 0 and evidence_passed
     return {"passed": bool(passed), "n": n, "mape": mape, "spearman": rho,
             "fisher_z_ci95": interval.tolist(), "direction_mean_ci95_upper": upper}
 
